@@ -1,3 +1,4 @@
+import zlib
 
 POLY = 0x11d
 TYPE_POLY = 0x537
@@ -320,3 +321,43 @@ def qr_dub_unicode(mx):
     return x & 0xf0 | y >> 4, y & 0xf | (x & 0xf) << 4
 
   return [''.join([glyphs(i) for c in r for i in dub(c)]) for r in mx]
+
+def qr_png(s, scale=4):
+  """Construct QR Code PNG for a given string with a given scale. Images with
+  scale=1 are very small, but although the scanners have no problem reading
+  them, a larger image may have a better human factor. Small images can be
+  stretched using browser's rendering of HTML (eg specify width="..."), but such
+  images appear not crisp (so, again, may look half-cooked).
+
+  Returns the image and its width."""
+  def i2b(v):
+    return (chr((v >> 24) & 0xff) + chr((v >> 16) & 0xff) +
+            chr((v >> 8) & 0xff) + chr(v & 0xff))
+
+  def b2s(b):
+    return ''.join([chr(c) for c in b])
+
+  def chunk(name, bs):
+    bs = name + bs
+    return i2b(len(bs) - 4) + bs + i2b(zlib.crc32(bs))
+
+  mx = qr_code(s)
+  w = mx.next()*scale
+  # row width in bytes, plus filter method byte
+  rw = ((w + 7) >> 3) + 1
+  img = [0xff]*rw*w
+
+  # set the filter method to None for all rows
+  for y in xrange(w):
+    img[y * rw] = 0
+  for c, r in mx:
+    for y in xrange(r * scale, (r + 1) * scale, 1):
+      for x in xrange(c * scale, (c + 1) * scale, 1):
+        col = x >> 3
+        img[y * rw + 1 + col] &= (1 << (7 - x & 7)) ^ 0xff
+
+  return (i2b(0x89504e47) + i2b(0x0d0a1a0a) + # PNG signature
+    # grayscale image with 1 bit per pixel, filtering method 0, no interleaving
+         chunk('IHDR', i2b(w) + i2b(w) + '\x01' + i2b(0)) +
+         chunk('IDAT', zlib.compress(b2s(img))) +
+         chunk('IEND', '')), w

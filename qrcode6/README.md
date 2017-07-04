@@ -42,3 +42,10 @@ An example in `gen.py` consumes the matrix to print a QR Code using unicode
 characters on the terminal. Some terminals may have line spacing that makes it
 look like a broken pattern. Adjust the spacing for the pattern to look joined
 (and square).
+
+Producing PNG
+-------------
+A simple grayscale PNG can be constructed for a given string.
+`qr_png(s, scale=4)` returns a byte string and a width of the image in pixels.
+
+This can be embedded in HTML as a data: URL, like `png.py` does.
