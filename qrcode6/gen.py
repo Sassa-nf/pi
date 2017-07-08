@@ -1,4 +1,8 @@
 from qrcode import qr_data, qr_code, data_layout, to_mx, qr_dub_unicode, bgnd
+from totp import googleauth
+import base64
+import time
+
 def htmlize(mx):
   return [''.join(['&#x%x' % ord(c) for c in r]) for r in mx]
 
@@ -10,6 +14,7 @@ def qr_print(mx):
     print(':'.join(['......']*11))
 
 if __name__ == '__main__':
+  k = base64.b32decode('HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ')
   s = 'otpauth://totp/ACME%20Co:john@example.com?secret=HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ&issuer=ACME%20Co&algorithm=SHA1&digits=6&period=30'
   #s = 'otpauth://totp/Menlo%20Security:mock.user@menlosecurity.com?secret=HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ&issuer=Menlo%20Security&algorithm=SHA1&digits=6&period=30'
   #s = 'otpauth://totp/Menlo%20Security:mock.user@menlosecurity.com?secret=HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ&issuer=Menlo%20Security'
@@ -17,6 +22,13 @@ if __name__ == '__main__':
   mx = to_mx(qr_code(s))
   print('\nYou may need to adjust your terminal line spacing\n\n')
   print('\n'.join(qr_dub_unicode(mx)))
+
+  t = time.time()
+  while 1:
+    print(googleauth(k, t))
+    time.sleep(int(t / 30) * 30 + 30 - t)
+    t = time.time()
+
   #print('<html><body>\n<span style="font-size: 10pt; line-height: 10pt;">'
   #      '<pre>\n\n\n%s</pre></span></body></html>' % '\n'.join(htmlize(qr_unicode(mx))))
   #qr_print(mx)
