@@ -1,3 +1,4 @@
+import struct
 import zlib
 
 POLY = 0x11d
@@ -330,22 +331,15 @@ def qr_png(s, scale=4):
   images appear not crisp (so, again, may look half-cooked).
 
   Returns the image and its width."""
-  def i2b(v):
-    return (chr((v >> 24) & 0xff) + chr((v >> 16) & 0xff) +
-            chr((v >> 8) & 0xff) + chr(v & 0xff))
-
-  def b2s(b):
-    return ''.join([chr(c) for c in b])
-
   def chunk(name, bs):
-    bs = name + bs
-    return i2b(len(bs) - 4) + bs + i2b(zlib.crc32(bs))
+    return struct.pack('>I%is%isI' % (len(name), len(bs)),
+                       len(bs), name, bs, zlib.crc32(name + bs) & 0xffffffff)
 
   mx = qr_code(s)
   w = mx.next()*scale
   # row width in bytes, plus filter method byte
   rw = ((w + 7) >> 3) + 1
-  img = [0xff]*rw*w
+  img = bytearray([0xff]*rw*w)
 
   # set the filter method to None for all rows
   for y in xrange(w):
@@ -356,8 +350,8 @@ def qr_png(s, scale=4):
         col = x >> 3
         img[y * rw + 1 + col] &= (1 << (7 - x & 7)) ^ 0xff
 
-  return (i2b(0x89504e47) + i2b(0x0d0a1a0a) + # PNG signature
+  return (struct.pack('>Q', 0x89504e470d0a1a0a) + # PNG signature
     # grayscale image with 1 bit per pixel, filtering method 0, no interleaving
-         chunk('IHDR', i2b(w) + i2b(w) + '\x01' + i2b(0)) +
-         chunk('IDAT', zlib.compress(b2s(img))) +
+         chunk('IHDR', struct.pack('>IIBI', w, w, 1, 0)) +
+         chunk('IDAT', zlib.compress(bytes(img))) +
          chunk('IEND', '')), w
