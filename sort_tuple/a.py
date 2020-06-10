@@ -18,21 +18,24 @@
 from functools import reduce
 
 def reconstructQueue(people): # List[List[int]]) -> List[List[int]]:
-   queue = []
-   ppl = [(p[1], p) for p in people]
-   ppl.sort(key=lambda p: -p[0])
+   def queue(ppl):
+      if not ppl:
+         return
+      pivot = min(ppl, key=lambda a: (a[1], a[0]))
+      bigger = queue([p for p in ppl if p[0] > pivot[0]])
+      smaller = queue([p for p in ppl if p[0] <= pivot[0] and p != pivot])
 
-   while ppl:
-      p = ppl.pop()
-      p, ppl = reduce(lambda a, q: (q, a[1] + [a[0]]) if q[0] == 0 and q[1][0] <= a[0][1][0] else (a[0], a[1] + [q]), ppl, (p, []))
+      yield pivot
 
-      queue.append(p[1])
-      ppl = [p if p[1][0] > queue[-1][0] else (p[0] - 1, p[1]) for p in ppl]
-      for q in range(len(ppl)):
-         if ppl[q][0] == 0:
-            p = q
-            break
-   return queue
+      n = pivot[1]
+      for s in smaller:
+         for _, b in zip(range(n+1, s[1]), bigger):
+            yield b
+         yield s
+         n = s[1] # actually, this is not a sufficient condition
+      for b in bigger:
+         yield b
+   return list(queue(list(people)))
 #def reconstructQueue(people):
 #   queue = [None for _ in people]
 #   positions = [i for i in range(len(people))]
