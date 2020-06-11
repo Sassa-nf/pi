@@ -17,34 +17,33 @@
 
 from functools import reduce
 
-def reconstructQueue(people): # List[List[int]]) -> List[List[int]]:
-   def queue(ppl):
+def reconstructQueue(people):
+   # List[List[int]]) -> List[List[int]]:
+   def queue(n, ppl, bigger):
       if not ppl:
+         for b in bigger:
+            yield b
          return
       pivot = min(ppl, key=lambda a: (a[1], a[0]))
-      bigger = queue([p for p in ppl if p[0] > pivot[0]])
-      smaller = queue([p for p in ppl if p[0] <= pivot[0] and p != pivot])
+      for _, b in zip(range(n, pivot[1]), bigger):
+         yield b
 
       yield pivot
 
-      n = pivot[1]
-      for s in smaller:
-         for _, b in zip(range(n+1, s[1]), bigger):
-            yield b
-         yield s
-         n = s[1] # actually, this is not a sufficient condition
-      for b in bigger:
+      bigger = queue(pivot[1], [p for p in ppl if p[0] > pivot[0]], bigger)
+      for b in queue(pivot[1]+1, [p for p in ppl if p[0] <= pivot[0] and p != pivot], bigger):
          yield b
-   return list(queue(list(people)))
-#def reconstructQueue(people):
-#   queue = [None for _ in people]
-#   positions = [i for i in range(len(people))]
-#   people.sort(key=lambda p: (-p[0], p[1]))
-#
-#   while people:
-#      p = people.pop()
-#      i = positions.pop(p[1])
-#      queue[i] = p
-#   return queue
+   return list(queue(0, list(people), iter([])))
+
+def reconstructQueueHint(people):
+   queue = [None for _ in people]
+   positions = [i for i in range(len(people))]
+   people.sort(key=lambda p: (-p[0], p[1]))
+
+   while people:
+      p = people.pop()
+      i = positions.pop(p[1])
+      queue[i] = p
+   return queue
 
 print('%s' % reconstructQueue([[7,0], [4,4], [7,1], [5,0], [6,1], [5,2]]))
