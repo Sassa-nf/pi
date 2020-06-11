@@ -21,19 +21,15 @@ def reconstructQueue(people):
    # List[List[int]]) -> List[List[int]]:
    def queue(n, ppl, bigger):
       if not ppl:
-         for b in bigger:
-            yield b
-         return
+         return bigger
       pivot = min(ppl, key=lambda a: (a[1], a[0]))
-      for _, b in zip(range(n, pivot[1]), bigger):
-         yield b
+      n = pivot[1] - n
 
-      yield pivot
-
-      bigger = queue(pivot[1], [p for p in ppl if p[0] > pivot[0]], bigger)
-      for b in queue(pivot[1]+1, [p for p in ppl if p[0] <= pivot[0] and p != pivot], bigger):
-         yield b
-   return list(queue(0, list(people), iter([])))
+      head = bigger[:n]
+      head.append(pivot)
+      bigger = queue(pivot[1], [p for p in ppl if p[0] > pivot[0]], bigger[n:])
+      return head + queue(pivot[1]+1, [p for p in ppl if p[0] <= pivot[0] and p != pivot], bigger)
+   return queue(0, list(people), [])
 
 def reconstructQueueHint(people):
    queue = [None for _ in people]
