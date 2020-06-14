@@ -1,3 +1,13 @@
+# https://leetcode.com/contest/biweekly-contest-28/problems/find-two-non-overlapping-sub-arrays-each-with-target-sum/
+# Given an array of integers arr and an integer target.
+#
+# You have to find two non-overlapping sub-arrays of arr each with sum equal target.
+# There can be multiple answers so you have to find an answer where the sum of the
+# lengths of the two sub-arrays is minimum.
+#
+# Return the minimum sum of the lengths of the two required sub-arrays, or return -1
+# if you cannot find such two sub-arrays.
+#
 from functools import reduce
 
 def minSum(arr, target):
@@ -17,24 +27,26 @@ def minSum(arr, target):
    r = reduce(step, arr, [(0, 0, 0)])
    r.pop()
 
-   if len(r) < 2:
-      return -1
-
-   found = None
-   min_l0 = None
+   found, w, l0 = None, None, None
    for i, v in enumerate(r):
       b, e, _ = v
       l0 = e - b
-      if min_l0 and l0 >= min_l0:
-         continue
-      min_l0 = l0
-      for j in range(i+1, len(r)):
-         if r[j][0] >= e:
-            w = min(r[j:], key=lambda w: w[1] - w[0])
-            l1 = w[1] - w[0]
-            if found is None or found > l0 + l1:
-               found = l0 + l1
-            break
+      if not w or e > w[0]:
+         # if the second sub-sequence is not known, or overlaps,
+         # presume it is not known
+         w = None
+         for j in range(i+1, len(r)):
+            if r[j][0] >= e:
+               # find the minimal length sub-sequence; if several have
+               # the same length, choose the furthest to the end
+               w = min(r[j:], key=lambda w: (w[1] - w[0], -w[0]))
+               l1 = w[1] - w[0]
+               break
+      if not w:
+         break
+
+      if found is None or found > l0 + l1:
+         found = l0 + l1
          
    return -1 if found is None else found
 
