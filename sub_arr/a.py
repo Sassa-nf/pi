@@ -27,27 +27,37 @@ def minSum(arr, target):
    r = reduce(step, arr, [(0, 0, 0)])
    r.pop()
 
-   found, w, l0 = None, None, None
-   for i, v in enumerate(r):
-      b, e, _ = v
-      l0 = e - b
-      if not w or e > w[0]:
-         # if the second sub-sequence is not known, or overlaps,
-         # presume it is not known
-         w = None
-         for j in range(i+1, len(r)):
-            if r[j][0] >= e:
-               # find the minimal length sub-sequence; if several have
-               # the same length, choose the furthest to the end
-               w = min(r[j:], key=lambda w: (w[1] - w[0], -w[0]))
-               l1 = w[1] - w[0]
-               break
-      if not w:
-         break
+   found = None
 
-      if found is None or found > l0 + l1:
-         found = l0 + l1
-         
+   while len(r) >= 2:
+      j = min(range(len(r)), key=lambda j: (r[j][1] - r[j][0], -r[j][0]))
+      w = r[j]
+      l1 = w[1] - w[0]
+
+      k = j - 1
+      while k >= 0 and r[k][1] > w[0]:
+         k -= 1
+      l = j + 1
+      while l < len(r) and r[l][0] < w[1]:
+         l += 1
+
+      vs = [min(rs, key=lambda v: (v[1] - v[0], -v[0])) for rs in [r[:k+1], r[l:]] if rs]
+      if vs:
+         v = min(vs, key=lambda v: v[1] - v[0])
+         l0 = v[1] - v[0]
+         if found is None or found > l0 + l1:
+            found = l0 + l1
+
+      if len(vs) < 2:
+         # it makes sense to continue only if both head and tail are non-empty:
+         # in that case there can be an interval in the head and an interval in the tail that
+         # overlap with w, but don't overlap between themselves
+         #
+         # if either the head or the tail is empty, then the unexplored part consists of intervals
+         # that all overlap between themselves, so no need to explore
+         break
+      r = r[k+1:j] + r[j+1:l]
+
    return -1 if found is None else found
 
 print(minSum([3,2,2,4,3], 3))
