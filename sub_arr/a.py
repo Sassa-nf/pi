@@ -11,55 +11,57 @@
 from functools import reduce
 
 def minSum(arr, target):
-   def step(a, x):
-      b, e, s = a[-1]
+   chains = []
+   begin, firstUnchained, rollingSum = 0, 0, 0
+   for end in range(len(arr)):
+      x = arr[end]
       if x < 0:
-         a[-1] = (e+1, e+1, 0)
+         begin = end + 1
+         rollingSum = 0
       else:
-         s += x
-         while s > target:
-            s -= arr[b]
-            b += 1
-         a[-1] = (b, e+1, s)
-         if s == target:
-            a.append((b+1, e+1, s - arr[b]))
-      return a
-   r = reduce(step, arr, [(0, 0, 0)])
-   r.pop()
+         rollingSum += x
+         while rollingSum > target:
+            rollingSum -= arr[begin]
+            begin += 1
+         if rollingSum == target:
+            chains.append((begin, end + 1))
 
-   found = None
+            while chains[firstUnchained][1] <= begin:
+               b, e = chains[firstUnchained]
+               chains[firstUnchained] = (e - b, len(chains)-1)
+               firstUnchained += 1
 
-   while len(r) >= 2:
-      j = min(range(len(r)), key=lambda j: (r[j][1] - r[j][0], -r[j][0]))
-      w = r[j]
-      l1 = w[1] - w[0]
+            rollingSum -= arr[begin]
+            begin += 1
 
-      k = j - 1
-      while k >= 0 and r[k][1] > w[0]:
-         k -= 1
-      l = j + 1
-      while l < len(r) and r[l][0] < w[1]:
-         l += 1
-      print("R: %s, J: %s, K: %s, L: %s" % (r, j, k, l))
+   if firstUnchained == 0:
+      # they all overlap, or chains is empty
+      return -1
+   # firstUnchained exists
+   c = len(chains) - 1
+   shortest_chain = chains[c][1] - chains[c][0]
 
-      vs = [min(rs, key=lambda v: (v[1] - v[0], -v[0])) for rs in [r[:k+1], r[l:]] if rs]
-      if vs:
-         v = min(vs, key=lambda v: v[1] - v[0])
-         l0 = v[1] - v[0]
-         if found is None or found > l0 + l1:
-            found = l0 + l1
+   while c >= firstUnchained:
+      b, e = chains[c]
+      if e - b < shortest_chain:
+         shortest_chain = e - b
+      chains[c] = (shortest_chain,)
+      c -= 1
 
-      if len(vs) < 2:
-         # it makes sense to continue only if both head and tail are non-empty:
-         # in that case there can be an interval in the head and an interval in the tail that
-         # overlap with w, but don't overlap between themselves
-         #
-         # if either the head or the tail is empty, then the unexplored part consists of intervals
-         # that all overlap between themselves, so no need to explore
-         break
-      r = r[k+1:j] + r[j+1:l]
+   found = chains[c][0] + chains[chains[c][1]][0]
 
-   return -1 if found is None else found
+   while c >= 0:
+      length, next_chain = chains[c]
+      if length + chains[next_chain][0] < found:
+         found = length + chains[next_chain][0]
+
+      if length < shortest_chain:
+         shortest_chain = length
+      else:
+         chains[c] = shortest_chain, next_chain
+      c -= 1
+
+   return found
 
 #print(minSum([3,2,2,4,3], 3))
 #print(minSum([7,3,4,7], 7))
@@ -76,5 +78,5 @@ def minSum(arr, target):
 #t = 500000000
 i = [4] * 6 + [1, 1] + [2] * 9
 t = 20
-print(minSum(i, t)) # should be 15, but isn't
+print(minSum(i, t)) # 15
 
