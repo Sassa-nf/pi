@@ -14,52 +14,36 @@ def minSum(arr, target):
    chains = []
    begin, firstUnchained, rollingSum = 0, 0, 0
    for end in range(len(arr)):
-      x = arr[end]
-      if x < 0:
-         begin = end + 1
-         rollingSum = 0
-      else:
-         rollingSum += x
-         while rollingSum > target:
-            rollingSum -= arr[begin]
-            begin += 1
-         if rollingSum == target:
-            chains.append((begin, end + 1))
+      rollingSum += arr[end]
+      while rollingSum > target:
+         rollingSum -= arr[begin]
+         begin += 1
+      if rollingSum == target:
+         chains.append([end + 1 - begin, end + 1])
 
-            while chains[firstUnchained][1] <= begin:
-               b, e = chains[firstUnchained]
-               chains[firstUnchained] = (e - b, len(chains)-1)
-               firstUnchained += 1
+         while chains[firstUnchained][1] <= begin:
+            chains[firstUnchained][1] = -len(chains)
+            firstUnchained += 1
 
-            rollingSum -= arr[begin]
-            begin += 1
+         rollingSum -= arr[begin]
+         begin += 1
 
    if firstUnchained == 0:
       # they all overlap, or chains is empty
       return -1
-   # firstUnchained exists
-   c = len(chains) - 1
-   shortest_chain = chains[c][1] - chains[c][0]
+   # chains[firstUnchained] exists, so at least chains[len(chains)-1] is unchained
+   # reverse, so things are a bit simpler
+   chains.reverse()
+   firstChained = len(chains) - firstUnchained
+   for c in range(1, firstChained):
+      chains[c][0] = min(chains[c-1][0], chains[c][0])
 
-   while c >= firstUnchained:
-      b, e = chains[c]
-      if e - b < shortest_chain:
-         shortest_chain = e - b
-      chains[c] = (shortest_chain,)
-      c -= 1
+   found = chains[firstChained][0] + chains[chains[firstChained][1]][0]
 
-   found = chains[c][0] + chains[chains[c][1]][0]
-
-   while c >= 0:
+   for c in range(firstChained, len(chains)):
       length, next_chain = chains[c]
-      if length + chains[next_chain][0] < found:
-         found = length + chains[next_chain][0]
-
-      if length < shortest_chain:
-         shortest_chain = length
-      else:
-         chains[c] = shortest_chain, next_chain
-      c -= 1
+      found = min(length + chains[next_chain][0], found)
+      chains[c][0] = min(chains[c-1][0], length)
 
    return found
 
@@ -73,9 +57,10 @@ def minSum(arr, target):
 #t = 97
 #
 #print(minSum(i, t))
-
+#
 #i = [1000] * 1000000 + [1, 999] + [1000] * 499999
 #t = 500000000
+#print(minSum(i, t))
 i = [4] * 6 + [1, 1] + [2] * 9
 t = 20
 print(minSum(i, t)) # 15
