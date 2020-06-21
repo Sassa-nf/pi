@@ -16,11 +16,7 @@ def ukkonen(S):
       oldr = ROOT
       end, r = test(s, k, i - 1, S[i])
       while not end:
-         r1 = len(GS)
-         GS.append({})
-         GS[r][S[i]] = i, len(S) - 1, r1 # originally: GS[r][S[i]] = i, len(S), r
-         FS[r1] = BOTTOM                 # originally: not linked
-         #print('>>> NEW STATE: %s at %s' % (GS[r], r))
+         GS[r][S[i]] = i, len(S) - 1, BOTTOM
          if oldr is not ROOT:
             FS[oldr] = r
          oldr = r
@@ -62,33 +58,55 @@ def ukkonen(S):
       s, k = update(s, k, i)
       s, k = canonize(s, k, i)
 
-   return [GS, FS]
+   return GS
+
+def print_sfx(indent, s, GS, S):
+   for k, p, s in s.values():
+      print('%s%s%s' % ('   ' * indent, S[k:p+1], ':' if s else ''))
+      print_sfx(indent+1, GS[s], GS, S)
 
 def is_in(S, sfx):
-   GS, FS = ukkonen(S)
-   print('GS: %s' % GS)
-   print('FS: %s' % FS)
+   GS = ukkonen(S)
+   print_sfx(0, GS[1], GS, S)
    k, p, s = 0, -1, 1
    while p - k < len(sfx):
-      print('<<< %s ~ %s %s %s' % (sfx, S[k:p+1], (k, p, s), GS[s]))
       if not sfx.startswith(S[k:p+1]):
          return False
-      sfx = sfx[p - k + (1 if p < len(S) else 0):]
-      print('<<< TRIMMED TO %s' % (sfx,))
+      sfx = sfx[p - k + 1:]
       if not sfx:
          return True
-      if s != 1:
-         s = FS[s]
       l = GS[s].get(sfx[0])
       if not l:
-         print('<<< %s ~ %s %s %s' % (sfx, s, l, GS[s]))
          return False
       k, p, s = l
 
    return S[k:p+1].startswith(sfx)
 
-def longest_dup(S):
-   return ukkonen(S)
+def find_deepest(indent, s, GS, S):
+   d = 0
+   b = 0
+   for k, p, s in s.values():
+      print('%s%s%s' % ('   ' * indent, S[k:p+1], ':' if s else ''))
+      if not s:
+         if d == 0:
+            b = k
+         continue
+      k1, p1 = find_deepest(indent + 1, GS[s], GS, S)
+      total_len = p1 + p - k + 1
+      if total_len > d:
+         b = k1 - (p - k + 1)
+         d = total_len
+   return b, d
 
-#print(longest_dup('banana'))
-print(is_in('bananas', 'anana'))
+def longest_dup(S):
+   GS = ukkonen(S + '$')
+   k, p = find_deepest(0, GS[1], GS, S)
+   print('FOUND: %s' % ((k, p),))
+   return S[k:k+p]
+
+print(longest_dup('banana'))
+print(longest_dup('aabababaab'))
+print(longest_dup('aaaaaab'))
+#print(is_in('bananas', 'ananast'))
+#print(is_in('aaaaaab', 'aaa'))
+#print(is_in('aabababaab', 'baba'))
