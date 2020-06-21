@@ -12,52 +12,46 @@ def ukkonen(S):
          return -1, 0, ROOT
       return GS[s].get(S[k])
 
-   def update(s, k, i):
-      s, k, r = canonize(s, k, i)
-      #print('>>> UPDATE %s, %s' % (S[i] if i >= 0 else -1, (s, k, i)))
-      if not r:
-         return s, k
-      tail = i, len(S)-1, BOTTOM # one extra char is the invalid char ''
-      GS[r][S[i]] = tail
-      s, k, r1 = canonize(FS[s], k, i)
-
-      while r1:
-         FS[r] = r1
-         r = r1
-         GS[r][S[i]] = tail
-         s, k, r1 = canonize(FS[s], k, i)
-      FS[r] = s
-      return s, k
-
-   def canonize(s, k, p):
+   def canonize_and_split(s, k, p):
       while k < p:
          k1, p1, s1 = g(s, k)
          if p1 - k1 > p - k:
             break
          k += p1 - k1
          s = s1
-      return s, k, test(s, k, p)
 
-   def test(s, k, p):
       if k >= p:
          #print('<<< TEST: k >= p in %s' % ((s, k, p, S[p]),))
-         return not g(s, p) and s
+         return s, k, not g(s, p) and s
       len_k = p - k
       k1, p1, s1 = g(s, k)
       if S[p] == S[k1 + len_k]:
          #print('<<< TEST: char %s is the same as at %s as per %s' % (t, k1 + len_k, ((s, k, p), (k1, p1, s1))))
-         return None
+         return s, k, None
       #print('<<< TEST: char %s is not the same as %s at %s as per %s' % (t, S[k1 + len_k], k1 + len_k, ((s, k, p), (k1, p1, s1))))
       r = len(GS)
       GS.append({S[k1 + len_k]: (k1 + len_k, p1, s1)})
       GS[s][S[k]] = k1, k1 + len_k, r
       #print('>>> NEW STATES: %s at %s and %s at %s' % (GS[s], s, GS[r], r))
-      return r
+      return s, k, r
 
    s = ROOT
    k = 0
    for i in range(len(S)):
-      s, k = update(s, k, i)
+      s, k, r = canonize_and_split(s, k, i)
+      #print('>>> UPDATE %s, %s' % (S[i] if i >= 0 else -1, (s, k, i)))
+      if not r:
+         continue
+      tail = i, len(S)-1, BOTTOM # one extra char is the invalid char ''
+      GS[r][S[i]] = tail
+      s, k, r1 = canonize_and_split(FS[s], k, i)
+
+      while r1:
+         FS[r] = r1
+         r = r1
+         GS[r][S[i]] = tail
+         s, k, r1 = canonize_and_split(FS[s], k, i)
+      FS[r] = s
 
    return GS
 
