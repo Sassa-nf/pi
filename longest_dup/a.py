@@ -1,60 +1,63 @@
 def ukkonen(S):
    # Ukkonen Suffix Tree
+   S = [c for c in S]
+   S.append('') # append a non-existent char
+
    BOTTOM = 0
    GS = [{}, {}]
    ROOT = 1
    FS = {ROOT: BOTTOM} # suffixes
-   def g(s, t):
+   def g(s, k):
       if s is BOTTOM:
          return -1, 0, ROOT
-      return GS[s][t]
+      return GS[s].get(S[k])
 
    def update(s, k, i):
-      print('>>> UPDATE %s, %s' % (S[i] if i >= 0 else -1, (s, k, i)))
-      oldr = ROOT
-      end, r = test(s, k, i-k, S[i])
-      while not end:
-         GS[r][S[i]] = i, len(S), BOTTOM
-         if oldr is not ROOT:
-            FS[oldr] = r
-         oldr = r
-         s, k = canonize(FS[s], k, i)
-         end, r = test(s, k, i-k, S[i])
-      if oldr is not ROOT:
-         FS[oldr] = s
+      s, k, r = canonize(s, k, i)
+      #print('>>> UPDATE %s, %s' % (S[i] if i >= 0 else -1, (s, k, i)))
+      if not r:
+         return s, k
+      tail = i, len(S)-1, BOTTOM # one extra char is the invalid char ''
+      GS[r][S[i]] = tail
+      s, k, r1 = canonize(FS[s], k, i)
+
+      while r1:
+         FS[r] = r1
+         r = r1
+         GS[r][S[i]] = tail
+         s, k, r1 = canonize(FS[s], k, i)
+      FS[r] = s
       return s, k
 
    def canonize(s, k, p):
-      if k >= p:
-         return (s, k)
-      k1, p1, s1 = g(s, S[k])
-      while p1 - k1 <= p - k:
+      while k < p:
+         k1, p1, s1 = g(s, k)
+         if p1 - k1 > p - k:
+            break
          k += p1 - k1
          s = s1
-         if k < p:
-            k1, p1, s1 = g(s, S[k])
-      return (s, k)
+      return s, k, test(s, k, p)
 
-   def test(s, k, len_k, t):
-      if len_k <= 0:
-         print('<<< TEST: len_k <= 0 in %s' % ((s, k, len_k, t),))
-         return s is BOTTOM or (s < len(GS) and t in GS[s]), s
-      k1, p1, s1 = g(s, S[k])
-      if t == S[k1 + len_k]:
-         print('<<< TEST: char %s is the same as at %s as per %s' % (t, k1 + len_k, ((s, k, len_k), (k1, p1, s1))))
-         return True, s
-      print('<<< TEST: char %s is not the same as %s at %s as per %s' % (t, S[k1 + len_k], k1 + len_k, ((s, k, len_k), (k1, p1, s1))))
+   def test(s, k, p):
+      if k >= p:
+         #print('<<< TEST: k >= p in %s' % ((s, k, p, S[p]),))
+         return not g(s, p) and s
+      len_k = p - k
+      k1, p1, s1 = g(s, k)
+      if S[p] == S[k1 + len_k]:
+         #print('<<< TEST: char %s is the same as at %s as per %s' % (t, k1 + len_k, ((s, k, p), (k1, p1, s1))))
+         return None
+      #print('<<< TEST: char %s is not the same as %s at %s as per %s' % (t, S[k1 + len_k], k1 + len_k, ((s, k, p), (k1, p1, s1))))
       r = len(GS)
       GS.append({S[k1 + len_k]: (k1 + len_k, p1, s1)})
       GS[s][S[k]] = k1, k1 + len_k, r
-      print('>>> NEW STATES: %s at %s and %s at %s' % (GS[s], s, GS[r], r))
-      return False, r
+      #print('>>> NEW STATES: %s at %s and %s at %s' % (GS[s], s, GS[r], r))
+      return r
 
    s = ROOT
    k = 0
    for i in range(len(S)):
       s, k = update(s, k, i)
-      s, k = canonize(s, k, i+1)
 
    return GS
 
@@ -97,14 +100,15 @@ def find_deepest(indent, s, GS, S):
    return b, d
 
 def longest_dup(S):
-   GS = ukkonen(S + '$')
+   GS = ukkonen(S)
    k, p = find_deepest(0, GS[1], GS, S)
-   print('FOUND: %s' % ((k, p),))
    return S[k:k+p]
 
 print(longest_dup('banana'))
 print(longest_dup('aabababaab'))
 print(longest_dup('aaaaaab'))
-#print(is_in('bananas', 'ananast'))
-#print(is_in('aaaaaab', 'aaa'))
-#print(is_in('aabababaab', 'baba'))
+print(is_in('bananas', 'ananast'))
+print(is_in('bananas', 'ananas'))
+print(is_in('bananas', 'anana'))
+print(is_in('aaaaaab', 'aaa'))
+print(is_in('aabababaab', 'baba'))
