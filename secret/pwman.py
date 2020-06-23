@@ -81,7 +81,7 @@ if __name__ == "__main__":
             if passw == passw2:
                 passw2 = hashlib.sha256(passw.encode()).digest()
                 key = Random.new().read(AES.block_size)
-                pw = {'key': base64.b64encode(aes_encrypt_hmac(passw2, key))}
+                pw = {'key': base64.b64encode(aes_encrypt_hmac(passw2, key)).decode('ascii')}
                 break
             print('Passwords did not match')
 
@@ -95,12 +95,12 @@ if __name__ == "__main__":
         p = getpass.getpass('Password for %s: ' % args.name)
         pw[args.key] = {'un': args.name,
                         'date': time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()),
-                        'pw': base64.b64encode(aes_encrypt_hmac(passw, p))}
+                        'pw': base64.b64encode(aes_encrypt_hmac(passw, p)).decode('ascii')}
         with open(args.file, "w") as f:
             json.dump(pw, f)
 
     rec = pw[args.key]
-    v = aes_decrypt_hmac(passw, base64.b64decode(rec['pw']))
+    v = aes_decrypt_hmac(passw, base64.b64decode(rec['pw'])).decode('ascii')
     print('%s\n%s' % (rec['date'], rec['un']))
     sys.stdout.write('%s\r' % v)
     sys.stdout.flush()
