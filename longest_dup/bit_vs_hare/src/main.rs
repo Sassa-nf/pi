@@ -1,20 +1,26 @@
 use std::time::Instant;
 
 fn bit_count(xs: &[u32]) -> u32 {
-   let mut m = 1;
-   let mut should = 1;
+   let n = xs.len() as u32;
+   let mut should = n >> 1;
    let mut r = 0;
+   let mut m = 0;
    while should > 0 {
       let mut actual = 0;
-      should = 0;
-      for (i, x) in xs.iter().enumerate() {
-         should += (i as u32) & m;
-         actual += x & m;
+      let mm = 1 << m;
+      for x in xs.iter() {
+         actual += x & mm;
       }
-      if should < actual {
-         r += m;
+      if should < (actual >> m) {
+         r += mm;
       }
-      m = m << 1;
+      m += 1;
+      should = n >> m;
+      should = ((should >> 1) << m) + (if (should & 1) > 0 {
+            n - (should << m)
+         } else {
+            0
+         });
    }
    return r;
 }
@@ -64,22 +70,23 @@ fn main() {
    xs.push(2);
 
    let now = Instant::now();
+   let mut r = 0;
    for _ in 0..ITERS {
-      find_duplicate(&xs);
+      r = find_duplicate(&xs);
    }
-   println!("Bit count: {}", now.elapsed().as_micros());
+   println!("Bit count: {}; {}", now.elapsed().as_micros(), r);
 
    let xs = xs.as_slice();
 
    let now = Instant::now();
    for _ in 0..ITERS {
-      bit_count(xs);
+      r = bit_count(xs);
    }
-   println!("Bit count: {}", now.elapsed().as_micros());
+   println!("Bit count: {}; {}", now.elapsed().as_micros(), r);
 
    let now = Instant::now();
    for _ in 0..ITERS {
-      tortoise(xs);
+      r = tortoise(xs);
    }
-   println!("Hare: {}", now.elapsed().as_micros());
+   println!("Hare: {}; {}", now.elapsed().as_micros(), r);
 }
