@@ -39,7 +39,8 @@
  *
  * For the array of 64K entries and a very large loop this is 2x faster than the
  * tortoise-and-hare. (But the same implementation in Python is 100x slower) For random
- * arrays tortoise-and-hare is faster.
+ * arrays with many loops tortoise-and-hare is faster. For large random arrays with a
+ * small number of loops tortoise-and-hare is slower.
  *
  * Bit counting works like so: treat all numbers as a sequence of 0..n, not 1..n, then
  * compare bit parity of the original sequence with the parity of the actual sequence.
@@ -63,27 +64,27 @@ use rand::*;
 
 fn bit_count(xs: &[u32]) -> u32 {
    let n = xs.len() as u32;
-   let mut should = n >> 1;
+   let mut should = n as u64 >> 1;
    let mut r = 0;
    let mut m = 0;
    while should > 0 {
-      let mut actual = 0;
+      let mut actual = 0u64;
       let mm = 1 << m;
       for x in xs.iter() {
-         actual += x & mm;
+         actual += (x & mm) as u64;
       }
       if should < (actual >> m) {
          r += mm;
       }
       m += 1;
-      should = n >> m;
+      should = n as u64 >> m;
       should = ((should >> 1) << m) + (if (should & 1) > 0 {
-            n - (should << m)
+            n as u64 - (should << m)
          } else {
             0
          });
    }
-   return r;
+   return r as u32;
 }
 
 fn find_duplicate(nums: &Vec<u32>) -> u32 {
@@ -168,7 +169,7 @@ fn main() {
    for _ in 0..ITERS {
       let n = (rnd.gen::<f64>() * 200000 as f64) as usize + 1;
       let extra = (rnd.gen::<f64>() * n as f64) as u32 + 1;
-      let repeats = (rnd.gen::<f64>() * n as f64) as usize + 1;
+      let repeats = (rnd.gen::<f64>() * (if n < 10 { n } else { 10 }) as f64) as usize + 1;
       let mut xs = vec![0u32; n];
       for (i, x) in xs.iter_mut().enumerate() {
          *x = i as u32;
