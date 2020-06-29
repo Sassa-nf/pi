@@ -38,9 +38,28 @@
  * to vectorize, and the scan is in cache-efficient order, not random.
  *
  * For the array of 64K entries and a very large loop this is 2x faster than the
- * tortoise-and-hare. (But the same implementation in Python is 100x slower)
+ * tortoise-and-hare. (But the same implementation in Python is 100x slower) For random
+ * arrays tortoise-and-hare is faster.
+ *
+ * Bit counting works like so: treat all numbers as a sequence of 0..n, not 1..n, then
+ * compare bit parity of the original sequence with the parity of the actual sequence.
+ *
+ * Then the repetition of some number comes because some of the numbers are replaced,
+ * 0 being one of those (the actual sequence does not have 0). Now, consider what
+ * happens to bit parity. When removing one number, and adding another, we are removing
+ * some ones and zeroes, and replace them with others. The counts of ones for each bit
+ * is reduced, when we take out a number with a 1 in that position, and insert a number
+ * with a zero in that position. The counts of ones increases, when we take out a
+ * number with a 0 in that position, and insert a number with a 1 in that position.
+ * Because one of the numbers we take out is a 0, then the bit parity for the positions
+ * where the inserted number has 1 increases.
+ *
+ * The expected parity for each bit position can be worked out from the bit position
+ * and the length of the sequence alone.
  */
 use std::time::Instant;
+
+use rand::*;
 
 fn bit_count(xs: &[u32]) -> u32 {
    let n = xs.len() as u32;
@@ -102,7 +121,19 @@ fn tortoise(xs: &[u32]) -> u32 {
    return h;
 }
 
-const ITERS: u32 = 10000;
+fn shuffle(mut xs: Vec<u32>) -> Vec<u32> {
+   let mut rnd = rand::thread_rng();
+   for i in 0..xs.len() {
+      let j = (rnd.gen::<f64>() * i as f64) as usize;
+      let o = xs[i];
+      xs[i] = xs[j];
+      xs[j] = o;
+   }
+
+   return xs;
+}
+
+const ITERS: usize = 10000;
 
 fn main() {
    let xs = [13, 2, 3, 13, 13, 6, 7, 13, 9, 10, 11, 12, 13, 13];
@@ -129,6 +160,37 @@ fn main() {
    let now = Instant::now();
    for _ in 0..ITERS {
       r = tortoise(xs);
+   }
+   println!("Hare: {}; {}", now.elapsed().as_micros(), r);
+
+   let mut vecs: Vec<Vec<u32>> = vec![];
+   let mut rnd = rand::thread_rng();
+   for _ in 0..ITERS {
+      let n = (rnd.gen::<f64>() * 200000 as f64) as usize + 1;
+      let extra = (rnd.gen::<f64>() * n as f64) as u32 + 1;
+      let repeats = (rnd.gen::<f64>() * n as f64) as usize + 1;
+      let mut xs = vec![0u32; n];
+      for (i, x) in xs.iter_mut().enumerate() {
+         *x = i as u32;
+      }
+      xs[0] = extra;
+      xs = shuffle(xs);
+      let mut extras = vec![extra; repeats];
+      xs.append(&mut extras);
+      xs = xs[repeats-1..].to_vec();
+      xs = shuffle(xs);
+      vecs.push(xs);
+   }
+
+   let now = Instant::now();
+   for i in 0..ITERS {
+      r = bit_count(&vecs[i].as_slice());
+   }
+   println!("Bit count: {}; {}", now.elapsed().as_micros(), r);
+
+   let now = Instant::now();
+   for i in 0..ITERS {
+      r = tortoise(&vecs[i].as_slice());
    }
    println!("Hare: {}; {}", now.elapsed().as_micros(), r);
 }
