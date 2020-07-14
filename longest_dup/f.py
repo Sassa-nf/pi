@@ -27,31 +27,35 @@ def find_boundary(indent, s, GS, S, longest_sfx, total_len, states):
       if p - k > 1: # substrings that are longer than 1 have no siblings after the first char
                     # they end up reporting just the longest suffix
          states.append([k+1, p, -longest_sfx])
+      new_len = total_len + p - k
       if p >= len(S): # substrings that run to the end of S have an artificial empty suffix
-         states.append([p, p, -(total_len + p - k)])
+         states.append([p, p, -new_len])
 
       print('%d %d %s%s%s' % (longest_sfx, k, '   ' * indent, S[k:p] or '$', ':' if s else ''))
-      new_len = total_len + p - k
       find_boundary(indent+1, GS[s], GS, S,
                     new_len if '' in GS[s] else longest_sfx, new_len, states)
 
 def match_boundary(b, bs, text):
    # the position from which started looking back
-   match = len(b)-1
+   match = len(b)
 
    # current position
-   i = match
+   i = match - 1
 
    # current state
    curr = 0
    k, p, a = bs[curr]
-   while i < len(text):
-      print('@%d: matching %s and %s' % (i, text[i:match+1][::-1], b[k:p]))
-      if match - i == len(b):
-         print('matched fully')
-         return i + 1, len(b)
+   longest_sfx = 0
 
-      if k < len(b) and text[i] == b[k]:
+   while i < len(text):
+      print('@%d: matching %s and %s' % (i, text[i:match][::-1], b[k:p]))
+
+      # assert: k == p only upon reaching one of the end states
+      if k < p and text[i] == b[k]:
+         if match - i + longest_sfx == len(b):
+            print('matched fully')
+            return i - longest_sfx, len(b)
+
          k += 1
          i -= 1
          if k < p:
@@ -66,15 +70,16 @@ def match_boundary(b, bs, text):
       else:
          # a <= 0;
          # -a is the longest suffix; len(b) + a is the length of the unmatched remainder
+         longest_sfx = -a
          match += len(b) + a
-         i = match
+         i = match - 1
          curr = 0
          report = 'matched partially; move on to position: %s' % (match)
       k, p, a = bs[curr]
       print('%s; switched to %d now: %s, %s, %s' % (report, curr, k, p, a))
    return -1, 0
 
-      
+
 
 b = 'anbancanca'
 print('\n'.join(['%d: %s %d' % (i, b[k:p], a) for i, (k, p, a) in enumerate(ukkonen_tree(b))]))
