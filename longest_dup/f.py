@@ -9,8 +9,8 @@ def print_sfx(indent, s, GS, S):
 # - k: the starting position of a substring
 # - p: the position after the end of substring
 # - a: action on mismatch at any position between k and p:
-#   a >= 0: the length of the boundary that matches
-#   a < 0: -a is the index of where to restart matching
+#   a <= 0: -a the length of the boundary that matches
+#   a > 0: a is the index of where to restart matching
 def ukkonen_tree(b):
    GS = ukkonen(b)
    states = []
@@ -21,14 +21,14 @@ def find_boundary(indent, s, GS, S, longest_sfx, total_len, states):
    prev = None
    for k, p, s in s.values():
       if prev: # link up siblings
-         prev[-1] = -len(states)
-      prev = [k, k+1 if p > k else k, longest_sfx]
+         prev[-1] = len(states)
+      prev = [k, k+1 if p > k else k, -longest_sfx]
       states.append(prev)
       if p - k > 1: # substrings that are longer than 1 have no siblings after the first char
                     # they end up reporting just the longest suffix
-         states.append([k+1, p, longest_sfx])
+         states.append([k+1, p, -longest_sfx])
       if p >= len(S): # substrings that run to the end of S have an artificial empty suffix
-         states.append([p, p, total_len + p - k])
+         states.append([p, p, -(total_len + p - k)])
 
       print('%d %d %s%s%s' % (longest_sfx, k, '   ' * indent, S[k:p] or '$', ':' if s else ''))
       new_len = total_len + p - k
@@ -45,34 +45,33 @@ def match_boundary(b, bs, text):
    # current state
    curr = 0
    k, p, a = bs[curr]
-   j = k
    while i < len(text):
-      print('@%d: matching %s and %s' % (i, text[i:match+1][::-1], b[j:p]))
-      if j >= len(b) or text[i] != b[j]:
-         if a < 0:
-            curr = -a
-            k, p, a = bs[curr]
-            j = k
-            print('mismatch; switched to %d now: %s, %s, %s' % (curr, k, p, a))
+      print('@%d: matching %s and %s' % (i, text[i:match+1][::-1], b[k:p]))
+      if match - i == len(b):
+         print('matched fully')
+         return i + 1, len(b)
+
+      if k < len(b) and text[i] == b[k]:
+         k += 1
+         i -= 1
+         if k < p:
             continue
-         if match - i == len(b):
-            print('matched fully')
-            return i + 1, match - i
-         # a is the longest suffix
-         match += len(b) - a
+         # successfully matched to the end of a substring, switch to the next substring
+         curr += 1
+         report = 'substring matched'
+      elif a > 0:
+         # assert: a single character mismatched, switch to the next choice
+         curr = a
+         report = 'mismatch'
+      else:
+         # a <= 0;
+         # -a is the longest suffix; len(b) + a is the length of the unmatched remainder
+         match += len(b) + a
          i = match
          curr = 0
-         k, p, a = bs[curr]
-         j = k
-         print('matched partially; move on to: %s' % (match))
-         continue
-      j += 1
-      i -= 1
-      if j >= p:
-         curr += 1
-         k, p, a = bs[curr]
-         j = k
-         print('substring matched; switched to %d now: %s, %s, %s' % (curr, k, p, a))
+         report = 'matched partially; move on to position: %s' % (match)
+      k, p, a = bs[curr]
+      print('%s; switched to %d now: %s, %s, %s' % (report, curr, k, p, a))
    return -1, 0
 
       
