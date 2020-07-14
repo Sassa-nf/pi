@@ -57,7 +57,7 @@ def ukkonen(S):
 
 def print_sfx(indent, s, GS, S):
    for k, p, s in s.values():
-      print('%s%s%s' % ('   ' * indent, S[k:p+1], ':' if s else ''))
+      print('%s%s%s' % ('   ' * indent, S[k:p], ':' if s else ''))
       print_sfx(indent+1, GS[s], GS, S)
 
 def is_in(S, sfx):
@@ -98,11 +98,11 @@ def longest_dup(S):
    k, p = find_deepest(0, GS[1], GS, S)
    return S[k:k+p]
 
-print(longest_dup('banana'))
-print(longest_dup('aabababaab'))
-print(longest_dup('aaaaaab'))
-print(is_in('bananas', 'ananast'))
-print(is_in('bananas', 'ananas'))
-print(is_in('bananas', 'anana'))
-print(is_in('aaaaaab', 'aaa'))
-print(is_in('aabababaab', 'baba'))
+#print(longest_dup('banana'))
+#print(longest_dup('aabababaab'))
+#print(longest_dup('aaaaaab'))
+#print(is_in('bananas', 'ananast'))
+#print(is_in('bananas', 'ananas'))
+#print(is_in('bananas', 'anana'))
+#print(is_in('aaaaaab', 'aaa'))
+#print(is_in('aabababaab', 'baba'))
