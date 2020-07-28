@@ -376,9 +376,7 @@ def floodAnimation(board, paletteClicked, animationSpeed=25):
 
 def generateRandomBoard(width, height, difficulty=MEDIUM):
     # Creates a board data structure with random colors for each box.
-    board = [None] * width
-    for x in range(width):
-        board[x] = [rnd.randint(0, len(paletteColors) - 1) for _ in range(height)]
+    board = [[rnd.randint(0, len(paletteColors) - 1) for _ in range(height)] for _ in range(width)]
 
     # Make board easier by setting some boxes to same color as a neighbor.
 
@@ -403,11 +401,9 @@ def generateRandomBoard(width, height, difficulty=MEDIUM):
         y = rnd.randint(1, height-2)
 
         # Randomly choose neighbors to change.
-        dx, dy = 0, 0
-        while dx == 0 and dy == 0:
-            dx = rnd.randint(-1, 1)
-            dy = rnd.randint(-1, 1)
-            board[x][y] = board[x + dx][y + dy]
+        dx = rnd.randint(-1, 1)
+        dy = [-1, 1, 0][rnd.randint(0, 2 if dx else 1)]
+        board[x][y] = board[x + dx][y + dy]
     return board
 
 
@@ -454,12 +450,15 @@ def getColorOfPaletteAt(x, y):
     numColors = len(paletteColors)
     xmargin = int((WINDOWWIDTH - ((PALETTESIZE * numColors) + (PALETTEGAPSIZE * (numColors - 1)))) / 2)
     top = WINDOWHEIGHT - PALETTESIZE - 10
-    for i in range(numColors):
-        # Find out if the mouse click is inside any of the palettes.
-        left = xmargin + (i * PALETTESIZE) + (i * PALETTEGAPSIZE)
-        r = pygame.Rect(left, top, PALETTESIZE, PALETTESIZE)
-        if r.collidepoint(x, y):
-            return i
+
+    # Find out if the mouse click is inside any of the palettes.
+    x -= xmargin
+    y -= top
+    i, j = divmod(x, PALETTESIZE + PALETTEGAPSIZE)
+
+    if (y >= 0 and y < PALETTESIZE and
+        x >= 0 and i < numColors and j < PALETTESIZE):
+        return i
     return None # no palette exists at these x, y coordinates
 
 
