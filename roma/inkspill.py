@@ -3,7 +3,8 @@
 # By Al Sweigart al@inventwithpython.com
 # Released under a "Simplified BSD" license
 
-import inkspill_ai2 as ai
+import enum
+import inkspill_ai as ai
 import queue
 import random as rnd
 import sys, webbrowser, copy, pygame
@@ -62,16 +63,102 @@ for i in range(len(COLORSCHEMES)):
 bgColor = COLORSCHEMES[0][0]
 paletteColors = COLORSCHEMES[0][1:]
 
+class Action(enum.Enum):
+    cell_change = 1
+    life_change = 2
+    color_change = 3
+    score_change = 4
+    border_change = 5
+
+class Player:
+    def __init__(self, num=None, coord=(None, None), color=None, life=None, score=None, border=[]):
+        self.coord = coord
+        self.color = color
+        self.life = life
+        self.score = score
+        self.border = border
+        self.num = num
 
 class Board():
-    def __init__(self, field, width, height, palette_colors):
-        self.field = field
+    def __init__(self, width, height, palette_colors):
+        self.field = []
         self.width = width
         self.height = height
         self.palette_colors = palette_colors
+        self.difficulty = difficulty
+        self.history = []
+        # players start at 1 because there is 0 color, if 0 is accessed it should give an error
+        self.player = []
+        self.player.append(Player())
 
-    def __getitem__(self, key):
-        return self.field[key]
+        # life is incremented because move decreases it at the start, score is 1 because first cell belongs to player
+        coord = (0, 0)
+        self.player.append(Player(num=len(self.player), coord=coord, color=None, life=maxLife + 1, score=1, border=[coord]))
+
+        self.generate_random_board()
+
+        # init current_color for all players
+        for num in range(1, len(self.player)):
+            x, y = self.player[num].coord
+            color = self.field[x][y]
+            self.field[x][y] = -num
+            self.player[num].color = None
+            self.move(num, color)
+
+
+    def _set_color(self, x, y, color):
+        self.history.append({'action': Action.cell_change, 'value': (x, y, self.field[x][y])})
+        self.field[x][y] = color
+
+    def get_color(self, x, y):
+        color = self.field[x][y]
+        return color if color >= 0 else self.player[-color].color
+
+    def get_value(self, x, y):
+        return self.field[x][y]
+
+    def _set_player_life(self, player_num, life):
+        self.history.append({'action': Action.life_change, 'value': (player_num, self.player[player_num].life)})
+        self.player[player_num].life = life
+
+    def _set_player_score(self, player_num, score):
+        self.history.append({'action': Action.score_change, 'value': (player_num, self.player[player_num].score)})
+        self.player[player_num].score = score
+
+    def _set_player_color(self, player_num, color):
+        self.history.append({'action': Action.color_change, 'value': (player_num, self.player[player_num].color)})
+        self.player[player_num].color = color
+
+    def _set_player_border(self, player_num, border):
+        border_old = self.player[player_num].border
+        self.history.append({'action': Action.border_change, 'value': (player_num, border_old)})
+        self.player[player_num].border = border
+
+    def undo_to(self, state):
+        t = len(self.history)
+        while t > state:
+            change = self.history.pop()
+            if change['action'] == Action.cell_change:
+                x, y, color = change['value']
+                self.field[x][y] = color
+            elif change['action'] == Action.life_change:
+                num, life = change['value']
+                self.player[num].life = life
+            elif change['action'] == Action.color_change:
+                num, color = change['value']
+                self.player[num].color = color
+            elif change['action'] == Action.score_change:
+                num, score = change['value']
+                self.player[num].score = score
+            elif change['action'] == Action.border_change:
+                num, border = change['value']
+                self.player[num].border = border
+            else:
+                raise Exception(f"Unknown action in boards history {change['action']}")
+            t -= 1
+
+    def get_history_state(self):
+        return len(self.history)
 
     def draw(self, transparency=255):
         # The colored squares are drawn to a temporary surface which is then
@@ -83,24 +170,141 @@ class Board():
 
         for x in range(self.width):
             for y in range(self.height):
-                left, top = leftTopPixelCoordOfCells(x, y)
-                r, g, b = paletteColors[self.field[x][y]]
+                left, top = get_left_top_pixelcoord_of_cells(x, y)
+                color = self.get_color(x, y)
+                r, g, b = paletteColors[color]
                 pygame.draw.rect(tempSurf, (r, g, b, transparency), (left, top, boxSize, boxSize))
-        left, top = leftTopPixelCoordOfCells(0, 0)
+        left, top = get_left_top_pixelcoord_of_cells(0, 0)
         pygame.draw.rect(tempSurf, BLACK, (left - 1, top - 1, boxSize * boardWidth + 1, boxSize * boardHeight + 1), 1)
         DISPLAYSURF.blit(tempSurf, (0, 0))
 
+    def generate_random_board(self):
+        # Creates a board data structure with random colors for each box.
+        self.field = [None] * self.width
+        for x in range(self.width):
+            self.field[x] = [rnd.randint(0, len(paletteColors) - 1) for _ in range(self.height)]
+
+        # Make board easier by setting some boxes to same color as a neighbor.
+
+        # Determine how many boxes to change.
+        if self.difficulty == EASY:
+            if boxSize == SMALLBOXSIZE:
+                boxesToChange = 100
+            else:
+                boxesToChange = 1500
+        elif self.difficulty == MEDIUM:
+            if boxSize == SMALLBOXSIZE:
+                boxesToChange = 5
+            else:
+                boxesToChange = 50
+        else:
+            boxesToChange = 0
+
+        # Change neighbor's colors:
+        for i in range(boxesToChange):
+            # Randomly choose a box whose color will be changed
+            x = rnd.randint(1, self.width - 2)
+            y = rnd.randint(1, self.height - 2)
+
+            # Randomly choose neighbors to change.
+            dx, dy = 0, 0
+            while dx == 0 and dy == 0:
+                dx = rnd.randint(-1, 1)
+                dy = rnd.randint(-1, 1)
+                self.field[x][y] = self.field[x + dx][y + dy]
+
+
+    def has_won(self, player_num):
+        # if the entire board is the same color, player has won
+        color = self.player[player_num].color
+        for x in range(self.width):
+            for y in range(self.height):
+                if self.get_color(x, y) != color:
+                    return False  # found a different color, player has not won
+        return True
+
+    def _border_fill(self, player_num, color):
+        """This is the flood fill algorithm."""
+        border = self.player[player_num].border.copy()
+        border_new = []
+        dif_lst = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+        acquired = 0
+        for x, y in border:
+            f_append = False
+            for dx, dy in dif_lst:
+                xn, yn = x + dx, y + dy
+                if 0 <= xn < self.width and 0 <= yn < self.height:
+                    if self.get_value(xn, yn) == color:
+                        self._set_color(xn, yn, -player_num)
+                        border.append((xn, yn))
+                        # border_new.append((xn, yn))
+                        acquired += 1
+                    elif self.get_value(xn, yn) != -player_num:
+                        f_append = True
+
+            if f_append:
+                border_new.append((x, y))
+
+        return border_new, acquired
+
+
+    def move(self, player_num, color):
+        assert color >= 0
+
+        if color != self.player[player_num].color:
+            self._set_player_color(player_num, color)
+
+            border_new, acquired = self._border_fill(player_num, color)
+
+            self._set_player_score(player_num, self.player[player_num].score + acquired)
+            self._set_player_life(player_num, self.player[player_num].life - 1)
+            self._set_player_border(player_num, border_new)
+
+        return acquired
+
+
+# Meanwhile is not used
+class button():
+    def __init__(self, image):
+        self.image = color
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.text = text
+
+    def draw(self, win, outline=None):
+        # Call this method to draw the button on the screen
+        if outline:
+            pygame.draw.rect(win, outline, (self.x - 2, self.y - 2, self.width + 4, self.height + 4), 0)
+
+        pygame.draw.rect(win, self.color, (self.x, self.y, self.width, self.height), 0)
+
+        if self.text != '':
+            font = pygame.font.SysFont('comicsans', 60)
+            text = font.render(self.text, 1, (0, 0, 0))
+            win.blit(text, (
+            self.x + (self.width / 2 - text.get_width() / 2), self.y + (self.height / 2 - text.get_height() / 2)))
+
+    def isOver(self, pos):
+        # Pos is the mouse position or a tuple of (x,y) coordinates
+        if pos[0] > self.x and pos[0] < self.x + self.width:
+            if pos[1] > self.y and pos[1] < self.y + self.height:
+                return True
+
+        return False
 
 def main():
     global FPSCLOCK, DISPLAYSURF, LOGOIMAGE, SPOTIMAGE, SETTINGSIMAGE, SETTINGSBUTTONIMAGE, RESETBUTTONIMAGE, UNDOBUTTONIMAGE
 
-    def draw_screen(mainBoard, life):
+    def draw_screen(mainboard):
         # Draw the screen.
         DISPLAYSURF.fill(bgColor)
-        drawLogoAndButtons()
-        mainBoard.draw()
-        drawLifeMeter(life)
-        drawPalettes()
+        draw_logo_and_buttons()
+        mainboard.draw()
+        draw_life_meter(mainboard.player[1].life)
+        draw_palettes()
 
     def load_images():
         global LOGOIMAGE, SPOTIMAGE, SETTINGSIMAGE, SETTINGSBUTTONIMAGE, RESETBUTTONIMAGE, UNDOBUTTONIMAGE
@@ -118,18 +322,18 @@ def main():
         return pygame.Rect(WINDOWWIDTH - SETTINGSBUTTONIMAGE.get_width(),
                             WINDOWHEIGHT - SETTINGSBUTTONIMAGE.get_height(),
                             SETTINGSBUTTONIMAGE.get_width(),
-                            SETTINGSBUTTONIMAGE.get_height()).collidepoint(mousex, mousey)
+                            SETTINGSBUTTONIMAGE.get_height()).collidepoint(mouse_x, mouse_y)
     def is_reset_button_pressed():
         return pygame.Rect(WINDOWWIDTH - RESETBUTTONIMAGE.get_width(),
                             WINDOWHEIGHT - SETTINGSBUTTONIMAGE.get_height() - RESETBUTTONIMAGE.get_height(),
                             RESETBUTTONIMAGE.get_width(),
-                            RESETBUTTONIMAGE.get_height()).collidepoint(mousex, mousey)
+                            RESETBUTTONIMAGE.get_height()).collidepoint(mouse_x, mouse_y)
 
     def is_undo_button_pressed():
         return pygame.Rect(WINDOWWIDTH - UNDOBUTTONIMAGE.get_width(),
                             WINDOWHEIGHT - SETTINGSBUTTONIMAGE.get_height() - RESETBUTTONIMAGE.get_height() - UNDOBUTTONIMAGE.get_height(),
                             UNDOBUTTONIMAGE.get_width(),
-                            UNDOBUTTONIMAGE.get_height()).collidepoint(mousex, mousey)
+                            UNDOBUTTONIMAGE.get_height()).collidepoint(mouse_x, mouse_y)
 
 
     load_images()
@@ -140,46 +344,46 @@ def main():
 
 
     pygame.display.set_caption('Ink Spill')
-    mousex = 0
-    mousey = 0
+    mouse_x = 0
+    mouse_y = 0
     f_resetGame = True
-
-    mainBoard_history = []
 
     while True: # main game loop
         if f_resetGame:
-            mainBoard = Board(generateRandomBoard(boardWidth, boardHeight, difficulty), boardWidth, boardHeight, paletteColors)
-            life = maxLife
-            lastPaletteClicked = mainBoard.field[0][0]
+            mainboard = Board(boardWidth, boardHeight, paletteColors)
+            lastPaletteClicked = mainboard.get_color(0, 0)
+
+            state_history = []
 
             f_resetGame = False
 
         paletteClicked = None
 
-        draw_screen(mainBoard, life)
+        draw_screen(mainboard)
 
-        checkForQuit()
+        if check_for_quit():
+            pygame.quit()  # terminate if any QUIT events are present
+            return
         for event in pygame.event.get():  # event handling loop
             if event.type == MOUSEBUTTONUP:
-                mousex, mousey = event.pos
+                mouse_x, mouse_y = event.pos
                 if is_settings_button_pressed():
                     # f_resetGame = showSettingsScreen() # clicked on Settings button
-                    mainBoard_old = copy.deepcopy(mainBoard)
-                    mainBoard_history.append(mainBoard_old)
-                    move = ai.make_move(mainBoard, life)
-                    if move is not None:
-                        x0, y0 = 0, 0
-                        floodFill(mainBoard, move, x0, y0)
-                    life -= 1
+
+                    color = ai.make_move(mainboard, mainboard.player[1])
+                    if color is not None:
+                        paletteClicked = color
                 elif is_reset_button_pressed():
                     f_resetGame = True # clicked on Reset button
                 elif is_undo_button_pressed():
                     print('Undo pressed')
-                    mainBoard = mainBoard_history.pop()
-                    life += 1
+
+                    if state_history:
+                        state = state_history.pop()
+                        mainboard.undo_to(state)
                 else:
                     # check if a palette button was clicked
-                    paletteClicked = getColorOfPaletteAt(mousex, mousey)
+                    paletteClicked = get_color_of_palette_at(mouse_x, mouse_y)
             elif event.type == KEYDOWN:
                 # support up to 9 palette keys
                 try:
@@ -190,30 +394,29 @@ def main():
                 if key != None and key > 0 and key <= len(paletteColors):
                     paletteClicked = key - 1
 
-        if paletteClicked != None and paletteClicked != lastPaletteClicked:
+        if paletteClicked != None and paletteClicked != mainboard.get_color(0, 0):
             # a palette button was clicked that is different from the
             # last palette button clicked (this check prevents the player
             # from accidentally clicking the same palette twice)
-            mainBoard_old = copy.deepcopy(mainBoard)
-            mainBoard_history.append(mainBoard_old)
+            state_history.append(mainboard.get_history_state())
 
-            lastPaletteClicked = paletteClicked
-            floodAnimation(mainBoard, paletteClicked)
-            life -= 1
+            # lastPaletteClicked = paletteClicked
+
+            mainboard.move(1, paletteClicked)
 
             f_resetGame = False
-            if hasWon(mainBoard):
+            if mainboard.has_won(1):
                 for i in range(4): # flash border 4 times
-                    flashBorderAnimation(WHITE, mainBoard)
+                    flash_border_animation(WHITE, mainboard)
                 f_resetGame = True
                 pygame.time.wait(2000) # pause so the player can bask in victory
-            elif life == 0:
+            elif mainboard.player[1].life == 0:
                 # life is zero, so player has lost
-                drawLifeMeter(0)
+                draw_life_meter(0)
                 pygame.display.update()
                 pygame.time.wait(400)
                 for i in range(4):
-                    flashBorderAnimation(BLACK, mainBoard)
+                    flash_border_animation(BLACK, mainboard)
                 f_resetGame = True
                 pygame.time.wait(2000) # pause so the player can suffer in their defeat
 
@@ -221,28 +424,19 @@ def main():
         FPSCLOCK.tick(FPS)
 
 
-def checkForQuit():
+def check_for_quit():
     # Terminates the program if there are any QUIT or escape key events.
+    f_exit = False
     for event in pygame.event.get(QUIT): # get all the QUIT events
-        pygame.quit() # terminate if any QUIT events are present
-        sys.exit()
+        f_exit = True
     for event in pygame.event.get(KEYUP): # get all the KEYUP events
         if event.key == K_ESCAPE:
-            pygame.quit() # terminate if the KEYUP event was for the Esc key
-            sys.exit()
+            f_exit = True
         pygame.event.post(event) # put the other KEYUP event objects back
+    return f_exit
 
 
-def hasWon(board):
-    # if the entire board is the same color, player has won
-    for x in range(boardWidth):
-        for y in range(boardHeight):
-            if board[x][y] != board[0][0]:
-                return False # found a different color, player has not won
-    return True
-
-
-def showSettingsScreen():
+def show_settings_screen():
     global difficulty, boxSize, boardWidth, boardHeight, maxLife, paletteColors, bgColor
 
     # The pixel coordinates in this function were obtained by loading
@@ -275,7 +469,7 @@ def showSettingsScreen():
                 DISPLAYSURF.blit(SPOTIMAGE, (24, 220))
 
             for i in range(len(COLORSCHEMES)):
-                drawColorSchemeBoxes(500, i * 60 + 30, i)
+                draw_color_scheme_boxes(500, i * 60 + 30, i)
 
             pygame.display.update()
 
@@ -333,7 +527,7 @@ def showSettingsScreen():
                         paletteColors  = COLORSCHEMES[i][1:]
 
 
-def drawColorSchemeBoxes(x, y, schemeNum):
+def draw_color_scheme_boxes(x, y, schemeNum):
     # Draws the color scheme boxes that appear on the "Settings" screen.
     for boxy in range(2):
         for boxx in range(3):
@@ -343,7 +537,7 @@ def drawColorSchemeBoxes(x, y, schemeNum):
                 DISPLAYSURF.blit(SPOTIMAGE, (x - 50, y))
 
 
-def flashBorderAnimation(color, board, animationSpeed=30):
+def flash_border_animation(color, board, animationSpeed=30):
     origSurf = DISPLAYSURF.copy()
     flashSurf = pygame.Surface(DISPLAYSURF.get_size())
     flashSurf = flashSurf.convert_alpha()
@@ -362,9 +556,9 @@ def flashBorderAnimation(color, board, animationSpeed=30):
     DISPLAYSURF.blit(origSurf, (0, 0)) # redraw the original surface
 
 
-def floodAnimation(board, paletteClicked, animationSpeed=25):
+def flood_animation(board, paletteClicked, animationSpeed=25):
     origBoard = copy.deepcopy(board)
-    floodFill(board, paletteClicked, 0, 0)
+    board.flood_fill(paletteClicked, 0, 0)
 
     for transparency in range(0, 255, animationSpeed):
         # The "new" board slowly become opaque over the original board.
@@ -374,40 +568,7 @@ def floodAnimation(board, paletteClicked, animationSpeed=25):
         FPSCLOCK.tick(FPS)
 
 
-def generateRandomBoard(width, height, difficulty=MEDIUM):
-    # Creates a board data structure with random colors for each box.
-    board = [[rnd.randint(0, len(paletteColors) - 1) for _ in range(height)] for _ in range(width)]
-
-    # Make board easier by setting some boxes to same color as a neighbor.
-
-    # Determine how many boxes to change.
-    if difficulty == EASY:
-        if boxSize == SMALLBOXSIZE:
-            boxesToChange = 100
-        else:
-            boxesToChange = 1500
-    elif difficulty == MEDIUM:
-        if boxSize == SMALLBOXSIZE:
-            boxesToChange = 5
-        else:
-            boxesToChange = 100
-    else:
-        boxesToChange = 0
-
-    # Change neighbor's colors:
-    for i in range(boxesToChange):
-        # Randomly choose a box whose color will be changed
-        x = rnd.randint(1, width-2)
-        y = rnd.randint(1, height-2)
-
-        # Randomly choose neighbors to change.
-        dx = rnd.randint(-1, 1)
-        dy = [-1, 1, 0][rnd.randint(0, 2 if dx else 1)]
-        board[x][y] = board[x + dx][y + dy]
-    return board
-
-
-def drawLogoAndButtons():
+def draw_logo_and_buttons():
     # draw the Ink Spill logo and Settings and Reset buttons.
     DISPLAYSURF.blit(LOGOIMAGE, (WINDOWWIDTH - LOGOIMAGE.get_width(), 0))
     DISPLAYSURF.blit(SETTINGSBUTTONIMAGE,
@@ -420,8 +581,7 @@ def drawLogoAndButtons():
                       WINDOWHEIGHT - SETTINGSBUTTONIMAGE.get_height() - RESETBUTTONIMAGE.get_height() - UNDOBUTTONIMAGE.get_height()))
 
 
-
-def drawPalettes():
+def draw_palettes():
     # Draws the six color palettes at the bottom of the screen.
     numColors = len(paletteColors)
     xmargin = int((WINDOWWIDTH - ((PALETTESIZE * numColors) + (PALETTEGAPSIZE * (numColors - 1)))) / 2)
@@ -432,7 +592,7 @@ def drawPalettes():
         pygame.draw.rect(DISPLAYSURF, bgColor,   (left + 2, top + 2, PALETTESIZE - 4, PALETTESIZE - 4), 2)
 
 
-def drawLifeMeter(currentLife):
+def draw_life_meter(currentLife):
     lifeBoxSize = int((WINDOWHEIGHT - 40) / maxLife)
 
     # Draw background color of life meter.
@@ -444,51 +604,22 @@ def drawLifeMeter(currentLife):
         pygame.draw.rect(DISPLAYSURF, WHITE, (20, 20 + (i * lifeBoxSize), 20, lifeBoxSize), 1) # draw white outline
 
 
-def getColorOfPaletteAt(x, y):
+def get_color_of_palette_at(x, y):
     # Returns the index of the color in paletteColors that the x and y parameters
     # are over. Returns None if x and y are not over any palette.
     numColors = len(paletteColors)
     xmargin = int((WINDOWWIDTH - ((PALETTESIZE * numColors) + (PALETTEGAPSIZE * (numColors - 1)))) / 2)
     top = WINDOWHEIGHT - PALETTESIZE - 10
-
-    # Find out if the mouse click is inside any of the palettes.
-    x -= xmargin
-    y -= top
-    i, j = divmod(x, PALETTESIZE + PALETTEGAPSIZE)
-
-    if (y >= 0 and y < PALETTESIZE and
-        x >= 0 and i < numColors and j < PALETTESIZE):
-        return i
+    for i in range(numColors):
+        # Find out if the mouse click is inside any of the palettes.
+        left = xmargin + (i * PALETTESIZE) + (i * PALETTEGAPSIZE)
+        r = pygame.Rect(left, top, PALETTESIZE, PALETTESIZE)
+        if r.collidepoint(x, y):
+            return i
     return None # no palette exists at these x, y coordinates
 
 
-def floodFill(board, color_new, x0, y0):
-    """This is the flood fill algorithm."""
-    color_old = board[x0][y0]
-    if color_old == color_new:
-        return
-    
-    cell_queue = queue.Queue()
-    cell_queue.put((x0, y0))
-
-    while not cell_queue.empty():
-        x, y = cell_queue.get()
-        if board[x][y] != color_old:
-            continue
-
-        board[x][y] = color_new
-
-        if x > 0:
-            cell_queue.put((x - 1, y))
-        if x < boardWidth - 1:
-            cell_queue.put((x + 1, y))
-        if y > 0:
-            cell_queue.put((x, y - 1))
-        if y < boardHeight - 1:
-            cell_queue.put((x, y + 1))
-
-
-def leftTopPixelCoordOfCells(cell_x, cell_y):
+def get_left_top_pixelcoord_of_cells(cell_x, cell_y):
     # Returns the x and y of the left-topmost pixel of the xth & yth box.
     margin_x = int((WINDOWWIDTH - (boardWidth * boxSize)) / 2)
     margin_y = int((WINDOWHEIGHT - (boardHeight * boxSize)) / 2)
