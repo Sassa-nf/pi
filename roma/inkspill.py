@@ -179,13 +179,6 @@ class Board():
         DISPLAYSURF.blit(tempSurf, (0, 0))
 
     def generate_random_board(self):
-        # Creates a board data structure with random colors for each box.
-        self.field = [None] * self.width
-        for x in range(self.width):
-            self.field[x] = [rnd.randint(0, len(paletteColors) - 1) for _ in range(self.height)]
-
-        # Make board easier by setting some boxes to same color as a neighbor.
-
         # Determine how many boxes to change.
         if self.difficulty == EASY:
             if boxSize == SMALLBOXSIZE:
@@ -200,6 +193,10 @@ class Board():
         else:
             boxesToChange = 0
 
+        # Creates a board data structure with random colors for each box.
+        self.field = [[rnd.randint(0, len(paletteColors) - 1) for _ in range(self.height)] for _ in range(self.width)]
+        # Make board easier by setting some boxes to same color as a neighbor.
+
         # Change neighbor's colors:
         for i in range(boxesToChange):
             # Randomly choose a box whose color will be changed
@@ -207,11 +204,9 @@ class Board():
             y = rnd.randint(1, self.height - 2)
 
             # Randomly choose neighbors to change.
-            dx, dy = 0, 0
-            while dx == 0 and dy == 0:
-                dx = rnd.randint(-1, 1)
-                dy = rnd.randint(-1, 1)
-                self.field[x][y] = self.field[x + dx][y + dy]
+            dx = rnd.randint(-1, 1)
+            dy = [-1, 1, 0][rnd.randint(0, 2 if dx else 1)]
+            self.field[x][y] = self.field[x + dx][y + dy]
 
 
     def has_won(self, player_num):
