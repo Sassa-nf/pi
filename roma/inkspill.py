@@ -610,12 +610,15 @@ def get_color_of_palette_at(x, y):
     numColors = len(paletteColors)
     xmargin = int((WINDOWWIDTH - ((PALETTESIZE * numColors) + (PALETTEGAPSIZE * (numColors - 1)))) / 2)
     top = WINDOWHEIGHT - PALETTESIZE - 10
-    for i in range(numColors):
-        # Find out if the mouse click is inside any of the palettes.
-        left = xmargin + (i * PALETTESIZE) + (i * PALETTEGAPSIZE)
-        r = pygame.Rect(left, top, PALETTESIZE, PALETTESIZE)
-        if r.collidepoint(x, y):
-            return i
+
+    # Find out if the mouse click is inside any of the palettes.
+    x -= xmargin
+    y -= top
+    i, j = divmod(x, PALETTESIZE + PALETTEGAPSIZE)
+
+    if (y >= 0 and y < PALETTESIZE and
+        x >= 0 and i < numColors and j < PALETTESIZE):
+        return i
     return None # no palette exists at these x, y coordinates
 
 
