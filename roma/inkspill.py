@@ -371,12 +371,12 @@ def main():
                 if is_settings_button_pressed():
                     # f_resetGame = showSettingsScreen() # clicked on Settings button
 
-                    color1 = d_ai.make_move(d_mainboard, d_mainboard.player[1])
-                    color = ai.make_move(mainboard, mainboard.player[1])
+                    color1 = ai.make_move(d_mainboard, d_mainboard.player[1])
+                    color = d_ai.make_move(mainboard, mainboard.player[1])
                     print('AI vs Depth-first: %s %s' % (color, color1))
-                    if color is not None:
+                    if color1 is not None:
                         paletteClicked = color
-                    if color1 < 0:
+                    if color < 0:
                         print('Are you not done yet? Depth-first has finished')
                     else:
                         d_mainboard.move(1, color1)
