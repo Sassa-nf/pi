@@ -5,6 +5,7 @@
 
 import enum
 import inkspill_ai as ai
+import depth_first as d_ai
 import queue
 import random as rnd
 import sys, webbrowser, copy, pygame
@@ -365,7 +366,9 @@ def main():
                 if is_settings_button_pressed():
                     # f_resetGame = showSettingsScreen() # clicked on Settings button
 
-                    color = ai.make_move(mainboard, mainboard.player[1])
+                    color = d_ai.make_move(mainboard, mainboard.player[1])
+                    color1 = ai.make_move(mainboard, mainboard.player[1])
+                    print('AI vs Depth-first: %s %s' % (color1, color))
                     if color is not None:
                         paletteClicked = color
                 elif is_reset_button_pressed():
