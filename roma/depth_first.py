@@ -2,29 +2,46 @@ from neighbours import *
 
 from time import time
 
+MAX_DEPTH = 5
+MAX_TIME = 1
+
+def cost(state):
+   return sum([len(b) for b in state.boundary])
+
 def find_paths(start, lives, dt):
    deadline = time() + dt
-   path = []
 
    got_one = 0
-   def paths(s):
+   def explore(s, max_depth):
+      bs = [([c], n, s1) for c in range(len(s.boundary)) for n, s1 in [s.transition(c)] if n]
+      if not bs:
+         bs = [([], 0, s)]
+      if not max_depth:
+         return bs
+
+      bs = [(cs + cs1, n + n1, s1) for cs, n, s in bs for cs1, n1, s1 in explore(s, max_depth-1)]
+      return bs
+
+   def paths(s, path):
       nonlocal got_one
       if got_one and (
           time() > deadline or
           len(path) >= got_one or
           len(path) >= lives):
          return
-      bs = [(-n, c, s1) for c in range(len(s.boundary)) for n, s1 in [s.transition(c)] if n]
-      bs.sort()
-      if not bs:
+      bs = [((len(p), -cost(s1)), p, s1) for p, n, s1 in explore(s, MAX_DEPTH)]
+      bs.sort(key=lambda b: b[0])
+      if len(bs[0][1]) < MAX_DEPTH:
+         path = path + bs[0][1]
          got_one = len(path)
          yield list(path)
-      for _, c, s1 in bs:
-         path.append(c)
-         for p in paths(s1):
+         return
+      for _, cs, s1 in bs:
+         path += cs
+         for p in paths(s1, path):
             yield p
-         path.pop()
-   return paths(start)
+         path = path[:-MAX_DEPTH]
+   return paths(start, [])
 
 def move(board, lives):
    colours = max([max(b) for b in board]) + 1
@@ -35,7 +52,7 @@ def move(board, lives):
    min_p = [board.stains[0].colour]
    # find_paths finds at least one path, and the path has at least one node, because we start
    # with empty state that can only transition to board.stains[0]
-   for p in find_paths(start, lives, 2):
+   for p in find_paths(start, lives, MAX_TIME):
       min_p = p
    print('Found a path: %d %s' % (len(min_p), min_p))
    return min_p[1 if len(min_p) > 1 else 0]
