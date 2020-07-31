@@ -63,7 +63,11 @@ def move(board, lives):
       min_p = best_path
       print('Best path so far still: %d %s' % (len(min_p), min_p))
    best_path = best_path[1:]
-   return min_p[1 if len(min_p) > 1 else 0]
+   if len(best_path) == 1:
+      print('Done!')
+   if len(min_p) < 2:
+      return -1
+   return min_p[1]
 
 def make_move(mainboard, player):
    board = [[c if c >= 0 else mainboard.player[-c].color for c in b] for b in mainboard.field]

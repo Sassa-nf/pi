@@ -81,7 +81,7 @@ class Player:
         self.num = num
 
 class Board():
-    def __init__(self, width, height, palette_colors):
+    def __init__(self, width, height, palette_colors, other=None):
         self.field = []
         self.width = width
         self.height = height
@@ -96,7 +96,10 @@ class Board():
         coord = (0, 0)
         self.player.append(Player(num=len(self.player), coord=coord, color=None, life=maxLife + 1, score=1, border=[coord]))
 
-        self.generate_random_board()
+        if other:
+            self.field = [[c if c >= 0 else other.player[-c].color for c in b] for b in other.field]
+        else:
+            self.generate_random_board()
 
         # init current_color for all players
         for num in range(1, len(self.player)):
@@ -347,7 +350,7 @@ def main():
     while True: # main game loop
         if f_resetGame:
             mainboard = Board(boardWidth, boardHeight, paletteColors)
-            d_mainboard = Board(boardWidth, boardHeight, paletteColors)
+            d_mainboard = Board(boardWidth, boardHeight, paletteColors, mainboard)
             lastPaletteClicked = mainboard.get_color(0, 0)
 
             state_history = []
@@ -373,7 +376,10 @@ def main():
                     print('AI vs Depth-first: %s %s' % (color, color1))
                     if color is not None:
                         paletteClicked = color
-                    d_mainboard.move(1, color1)
+                    if color1 < 0:
+                        print('Are you not done yet? Depth-first has finished')
+                    else:
+                        d_mainboard.move(1, color1)
                 elif is_reset_button_pressed():
                     f_resetGame = True # clicked on Reset button
                 elif is_undo_button_pressed():
