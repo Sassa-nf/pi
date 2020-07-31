@@ -35,6 +35,11 @@ def move(board, lives):
    min_p = [board.stains[0].colour]
    # find_paths finds at least one path, and the path has at least one node, because we start
    # with empty state that can only transition to board.stains[0]
-   for p in find_paths(start, lives, 1):
+   for p in find_paths(start, lives, 2):
       min_p = p
+   print('Found a path: %d %s' % (len(min_p), min_p))
    return min_p[1 if len(min_p) > 1 else 0]
+
+def make_move(mainboard, player):
+   board = [[c if c >= 0 else mainboard.player[-c].color for c in b] for b in mainboard.field]
+   return move(board, player.life)
