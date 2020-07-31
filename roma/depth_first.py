@@ -42,7 +42,10 @@ def find_paths(start, lives, dt):
             yield p
    return paths(start, [])
 
+best_path = []
+
 def move(board, lives):
+   global best_path
    colours = max([max(b) for b in board]) + 1
    ns = [set() for _ in range(colours)]
    board = Board(board)
@@ -54,8 +57,18 @@ def move(board, lives):
    for p in find_paths(start, lives, MAX_TIME):
       min_p = p
    print('Found a path: %d %s' % (len(min_p), min_p))
+   if not best_path or len(best_path) > len(min_p):
+      best_path = min_p
+   else:
+      min_p = best_path
+      print('Best path so far still: %d %s' % (len(min_p), min_p))
+   best_path = best_path[1:]
    return min_p[1 if len(min_p) > 1 else 0]
 
 def make_move(mainboard, player):
    board = [[c if c >= 0 else mainboard.player[-c].color for c in b] for b in mainboard.field]
    return move(board, player.life)
+
+def new_game():
+   global best_path
+   best_path = []

@@ -347,11 +347,13 @@ def main():
     while True: # main game loop
         if f_resetGame:
             mainboard = Board(boardWidth, boardHeight, paletteColors)
+            d_mainboard = Board(boardWidth, boardHeight, paletteColors)
             lastPaletteClicked = mainboard.get_color(0, 0)
 
             state_history = []
 
             f_resetGame = False
+            d_ai.new_game()
 
         paletteClicked = None
 
@@ -366,11 +368,12 @@ def main():
                 if is_settings_button_pressed():
                     # f_resetGame = showSettingsScreen() # clicked on Settings button
 
-                    color = d_ai.make_move(mainboard, mainboard.player[1])
-                    color1 = ai.make_move(mainboard, mainboard.player[1])
-                    print('AI vs Depth-first: %s %s' % (color1, color))
+                    color1 = d_ai.make_move(d_mainboard, d_mainboard.player[1])
+                    color = ai.make_move(mainboard, mainboard.player[1])
+                    print('AI vs Depth-first: %s %s' % (color, color1))
                     if color is not None:
                         paletteClicked = color
+                    d_mainboard.move(1, color1)
                 elif is_reset_button_pressed():
                     f_resetGame = True # clicked on Reset button
                 elif is_undo_button_pressed():
