@@ -29,18 +29,17 @@ def find_paths(start, lives, dt):
           len(path) >= got_one or
           len(path) >= lives):
          return
-      bs = [((len(p), -cost(s1)), p, s1) for p, n, s1 in explore(s, MAX_DEPTH)]
+      bs = [((len(p), -n, -cost(s1)), p, s1) for p, n, s1 in explore(s, MAX_DEPTH)]
       bs.sort(key=lambda b: b[0])
-      if len(bs[0][1]) < MAX_DEPTH:
+      if len(bs[0][1]) <= MAX_DEPTH:
          path = path + bs[0][1]
-         got_one = len(path)
-         yield list(path)
+         if not got_one or got_one > len(path):
+            got_one = len(path)
+            yield list(path)
          return
       for _, cs, s1 in bs:
-         path += cs
-         for p in paths(s1, path):
+         for p in paths(s1, path + cs):
             yield p
-         path = path[:-MAX_DEPTH]
    return paths(start, [])
 
 def move(board, lives):
