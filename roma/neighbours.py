@@ -54,7 +54,17 @@ class State:
       self.boundary = boundary
 
    def __eq__(self, other):
-      return self.coloured == other.coloured and self.boundary == other.boundary
+      return (len(self.coloured) == len(other.coloured) and
+              [len(b) for b in self.boundary] == [len(b) for b in other.boundary] and
+              self.coloured == other.coloured and
+              self.boundary == other.boundary)
+
+   def __hash__(self):
+      return (sum([c.__hash__() for c in self.coloured]) +
+              sum([b.__hash__() for bs in self.boundary for b in bs]))
+
+   def __str__(self):
+      return 'State[%d] covering %s and bordering with %s' % (self.path, self.coloured, self.boundary)
 
    def transition(self, colour):
       new = self.boundary[colour]
