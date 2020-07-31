@@ -37,6 +37,10 @@ def find_paths(start, lives, dt):
             got_one = len(path)
             yield list(path)
          return
+      # discard duplicate states; ignore the difference in colour, because we are only interested in whether
+      # the coverage and the neighbours are the same - that is, whether we can switch to the same colours
+      # from there
+      bs = [bs[0]] + [bs[i] for i in range(1, len(bs)) if bs[i-1][0] != bs[i][0] or bs[i-1][2] != bs[i][2]]
       for _, cs, s1 in bs:
          for p in paths(s1, path + cs):
             yield p

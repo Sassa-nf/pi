@@ -53,6 +53,9 @@ class State:
       self.coloured = coloured
       self.boundary = boundary
 
+   def __eq__(self, other):
+      return self.coloured == other.coloured and self.boundary == other.boundary
+
    def transition(self, colour):
       new = self.boundary[colour]
       if not new:
