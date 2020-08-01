@@ -75,17 +75,19 @@ class Game:
          self.suspended.append(suspended)
          self.steps += 1
       else:
-         gen, thread = divmod(self.steps, MAX_DEPTH + 1)
          self.steps += 1
 
          best_so_far = self.best_path[:self.steps]
-         suspended = self.suspended[thread]
+         suspended = self.suspended.pop(0)
+         while self.suspended and not suspended:
+            suspended = self.suspended.pop(0)
+         self.suspended.append(suspended)
 
          # discard unexplorable states
-         for i in range(min(gen, len(suspended))):
-            suspended[i] = [(p, s) for p, s in suspended[i] if len(p) <= len(best_so_far) and best_so_far[:len(p)] == p]
-         for i in range(gen, len(suspended)):
-            suspended[i] = [(p, s) for p, s in suspended[i] if len(p) < len(self.best_path) and p[:self.steps] == best_so_far]
+         for i in range(len(suspended)):
+            suspended[i] = [(p, s) for p, s in suspended[i]
+                                   if (best_so_far[:len(p)] == p if len(p) <= len(best_so_far)
+                                       else (len(p) < len(self.best_path) and p[:self.steps] == best_so_far))]
 
       min_p = self.best_path
 
