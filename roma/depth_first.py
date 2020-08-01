@@ -53,6 +53,7 @@ def find_paths(resume, lives, dt):
                yield list(path), iters
             continue
          resume.append([(path + cs, s) for cs, s in bs])
+      yield None, iters
    return paths(resume)
 
 class Game:
