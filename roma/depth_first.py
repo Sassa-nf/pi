@@ -55,19 +55,23 @@ class Game:
    def __init__(self):
       self.best_path = []
       self.steps = 0
+      self.suspended = []
 
    def move(self, board, lives):
-      self.steps += 1
+      if not self.suspended or len(self.suspended) <= MAX_DEPTH:
+         colours = max([max(b) for b in board]) + 1
+         ns = [set() for _ in range(colours)]
+         board = Board(board)
+         ns[board.stains[0].colour] = {0}
+         start = State(0, board, set(), ns)
+         self.suspended.append([[(self.best_path[:self.steps], start)]])
+      min_p = [-1]
 
-      colours = max([max(b) for b in board]) + 1
-      ns = [set() for _ in range(colours)]
-      board = Board(board)
-      ns[board.stains[0].colour] = {0}
-      start = State(0, board, set(), ns)
-      min_p = [board.stains[0].colour]
+      thread = self.steps % (MAX_DEPTH + 1)
+
       # find_paths finds at least one path, and the path has at least one node, because we start
       # with empty state that can only transition to board.stains[0]
-      for p in find_paths([[([], start)]], lives, MAX_TIME):
+      for p in find_paths(self.suspended[thread], lives, MAX_TIME):
          min_p = p
       print('Found a path: %d %s' % (len(min_p), min_p))
       if not self.best_path or len(self.best_path) > len(min_p):
@@ -75,12 +79,14 @@ class Game:
       else:
          min_p = self.best_path
          print('Best path so far still: %d %s' % (len(min_p), min_p))
-      self.best_path = self.best_path[1:]
-      if len(self.best_path) == 1:
-         print('Done!')
-      if len(min_p) < 2:
+
+      self.steps += 1
+      if self.steps >= len(min_p):
          return -1
-      return min_p[1]
+
+      if self.steps == len(min_p) - 1:
+         print('Done! in %s steps' % self.steps)
+      return min_p[self.steps]
 
    def make_move(self, mainboard, player):
       board = [[c if c >= 0 else mainboard.player[-c].color for c in b] for b in mainboard.field]
