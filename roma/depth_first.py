@@ -65,13 +65,17 @@ class Game:
          ns[board.stains[0].colour] = {0}
          start = State(0, board, set(), ns)
          self.suspended.append([[(self.best_path[:self.steps], start)]])
-      min_p = [-1]
+      min_p = self.best_path
 
-      thread = self.steps % (MAX_DEPTH + 1)
+      gen, thread = divmod(self.steps, MAX_DEPTH + 1)
 
       # find_paths finds at least one path, and the path has at least one node, because we start
       # with empty state that can only transition to board.stains[0]
       for p in find_paths(self.suspended[thread], lives, MAX_TIME):
+         if p[:self.steps] != self.best_path[:self.steps]:
+            # started to explore unreachable states
+            self.suspended[thread] = []
+            break
          min_p = p
       print('Found a path: %d %s' % (len(min_p), min_p))
       if not self.best_path or len(self.best_path) > len(min_p):
@@ -79,6 +83,11 @@ class Game:
       else:
          min_p = self.best_path
          print('Best path so far still: %d %s' % (len(min_p), min_p))
+
+      # discard unreachable space: once the game advances beyond the steps, no need to explore
+      # the possibilities that could result in other steps
+      if gen and len(self.suspended[thread]) >= gen:
+         self.suspended[thread][gen-1] = []
 
       self.steps += 1
       if self.steps >= len(min_p):
