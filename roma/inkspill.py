@@ -356,7 +356,7 @@ def main():
             state_history = []
 
             f_resetGame = False
-            d_ai.new_game()
+            d_game = d_ai.new_game()
 
         paletteClicked = None
 
@@ -372,7 +372,7 @@ def main():
                     # f_resetGame = showSettingsScreen() # clicked on Settings button
 
                     color1 = ai.make_move(d_mainboard, d_mainboard.player[1])
-                    color = d_ai.make_move(mainboard, mainboard.player[1])
+                    color = d_game.make_move(mainboard, mainboard.player[1])
                     print('AI vs Depth-first: %s %s' % (color, color1))
                     if color1 is not None:
                         paletteClicked = color

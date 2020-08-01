@@ -51,42 +51,40 @@ def find_paths(resume, lives, dt):
          resume.append([(path + cs, s) for cs, s in bs])
    return paths(resume)
 
-best_path = []
+class Game:
+   def __init__(self):
+      self.best_path = []
+      self.steps = 0
 
-def move(board, lives):
-   global best_path
-   global steps
-   steps += 1
+   def move(self, board, lives):
+      self.steps += 1
 
-   colours = max([max(b) for b in board]) + 1
-   ns = [set() for _ in range(colours)]
-   board = Board(board)
-   ns[board.stains[0].colour] = {0}
-   start = State(0, board, set(), ns)
-   min_p = [board.stains[0].colour]
-   # find_paths finds at least one path, and the path has at least one node, because we start
-   # with empty state that can only transition to board.stains[0]
-   for p in find_paths([[([], start)]], lives, MAX_TIME):
-      min_p = p
-   print('Found a path: %d %s' % (len(min_p), min_p))
-   if not best_path or len(best_path) > len(min_p):
-      best_path = min_p
-   else:
-      min_p = best_path
-      print('Best path so far still: %d %s' % (len(min_p), min_p))
-   best_path = best_path[1:]
-   if len(best_path) == 1:
-      print('Done!')
-   if len(min_p) < 2:
-      return -1
-   return min_p[1]
+      colours = max([max(b) for b in board]) + 1
+      ns = [set() for _ in range(colours)]
+      board = Board(board)
+      ns[board.stains[0].colour] = {0}
+      start = State(0, board, set(), ns)
+      min_p = [board.stains[0].colour]
+      # find_paths finds at least one path, and the path has at least one node, because we start
+      # with empty state that can only transition to board.stains[0]
+      for p in find_paths([[([], start)]], lives, MAX_TIME):
+         min_p = p
+      print('Found a path: %d %s' % (len(min_p), min_p))
+      if not self.best_path or len(self.best_path) > len(min_p):
+         self.best_path = min_p
+      else:
+         min_p = self.best_path
+         print('Best path so far still: %d %s' % (len(min_p), min_p))
+      self.best_path = self.best_path[1:]
+      if len(self.best_path) == 1:
+         print('Done!')
+      if len(min_p) < 2:
+         return -1
+      return min_p[1]
 
-def make_move(mainboard, player):
-   board = [[c if c >= 0 else mainboard.player[-c].color for c in b] for b in mainboard.field]
-   return move(board, player.life)
+   def make_move(self, mainboard, player):
+      board = [[c if c >= 0 else mainboard.player[-c].color for c in b] for b in mainboard.field]
+      return self.move(board, player.life)
 
 def new_game():
-   global best_path
-   global steps
-   best_path = []
-   steps = 0
+   return Game()
