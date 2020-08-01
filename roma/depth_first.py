@@ -23,38 +23,34 @@ def find_paths(resume, lives, dt):
       bs = [(cs + cs1, n + n1, s1) for cs, n, s in bs for cs1, n1, s1 in explore(s, max_depth-1)]
       return bs
 
-   def paths(resume):
-      nonlocal got_one
-      nonlocal iters
-      while resume:
-         if not resume[-1]:
-            resume.pop()
-            continue
-         if got_one and time() > deadline:
-            yield None, iters
-            return
+   while resume:
+      if not resume[-1]:
+         resume.pop()
+         continue
+      if got_one and time() > deadline:
+         yield None, iters
+         return
 
-         path, s = resume[-1].pop()
-         if got_one and len(path) >= got_one:
-            continue
-         iters += 1
-         bs = [((-len(p), n, cost(s1)), p, s1) for p, n, s1 in explore(s, MAX_DEPTH)]
-         bs.sort(key=lambda b: b[0])
-         # discard duplicate states; ignore the difference in colour, because we are only interested in whether
-         # the coverage and the neighbours are the same - that is, whether we can switch to the same colours
-         # from there
-         bs = ([(bs[i][1], bs[i][2]) for i in range(len(bs)-1)
-                                     if bs[i+1][0] != bs[i][0] or bs[i+1][2] != bs[i][2]] +
-               [(bs[-1][1], bs[-1][2])])
-         if len(bs[-1][0]) <= MAX_DEPTH:
-            path = path + bs[-1][0]
-            if not got_one or got_one > len(path):
-               got_one = len(path)
-               yield list(path), iters
-            continue
-         resume.append([(path + cs, s) for cs, s in bs])
-      yield None, iters
-   return paths(resume)
+      path, s = resume[-1].pop()
+      if got_one and len(path) >= got_one:
+         continue
+      iters += 1
+      bs = [((-len(p), n, cost(s1)), p, s1) for p, n, s1 in explore(s, MAX_DEPTH)]
+      bs.sort(key=lambda b: b[0])
+      # discard duplicate states; ignore the difference in colour, because we are only interested in whether
+      # the coverage and the neighbours are the same - that is, whether we can switch to the same colours
+      # from there
+      bs = ([(bs[i][1], bs[i][2]) for i in range(len(bs)-1)
+                                  if bs[i+1][0] != bs[i][0] or bs[i+1][2] != bs[i][2]] +
+            [(bs[-1][1], bs[-1][2])])
+      if len(bs[-1][0]) <= MAX_DEPTH:
+         path = path + bs[-1][0]
+         if not got_one or got_one > len(path):
+            got_one = len(path)
+            yield list(path), iters
+         continue
+      resume.append([(path + cs, s) for cs, s in bs])
+   yield None, iters
 
 class Game:
    def __init__(self):
