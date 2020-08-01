@@ -4,6 +4,7 @@ from time import time
 
 MAX_DEPTH = 5
 MAX_TIME = 1
+MAX_WIDTH = 1000
 
 def cost(state):
    return sum([len(b) for b in state.boundary])
@@ -31,25 +32,29 @@ def find_paths(resume, lives, dt):
          yield None, iters
          return
 
-      path, s = resume[-1].pop()
-      if got_one and len(path) >= got_one:
+      bs = []
+      while resume[-1] and len(bs) < MAX_WIDTH:
+         path, s = resume[-1].pop()
+         if got_one and len(path) >= got_one:
+            continue
+         iters += 1
+         bs += [((-len(p), n, cost(s1)), path + p, s1) for p, n, s1 in explore(s, MAX_DEPTH)]
+      if not bs:
          continue
-      iters += 1
-      bs = [((-len(p), n, cost(s1)), p, s1) for p, n, s1 in explore(s, MAX_DEPTH)]
       bs.sort(key=lambda b: b[0])
+      if bs[-1][0][-1] == 0:
+         path = bs[-1][1]
+         if not got_one or got_one > len(path):
+            got_one = len(path)
+            yield list(path), iters
+         continue
       # discard duplicate states; ignore the difference in colour, because we are only interested in whether
       # the coverage and the neighbours are the same - that is, whether we can switch to the same colours
       # from there
       bs = ([(bs[i][1], bs[i][2]) for i in range(len(bs)-1)
                                   if bs[i+1][0] != bs[i][0] or bs[i+1][2] != bs[i][2]] +
             [(bs[-1][1], bs[-1][2])])
-      if len(bs[-1][0]) <= MAX_DEPTH:
-         path = path + bs[-1][0]
-         if not got_one or got_one > len(path):
-            got_one = len(path)
-            yield list(path), iters
-         continue
-      resume.append([(path + cs, s) for cs, s in bs])
+      resume.append(bs)
    yield None, iters
 
 class Game:
