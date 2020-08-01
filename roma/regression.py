@@ -9,17 +9,14 @@ def run():
    d_mainboard = Board(boardWidth, boardHeight, paletteColors, mainboard)
    ai.new_game()
    d_game = d_ai.new_game()
-   c = 0
 
    orig_board = [[c if c >= 0 else mainboard.player[-c].color for c in b] for b in mainboard.field]
    steps = [0, 0]
    times = [0, 0]
-   while not all(steps):
-      c += 1
-      for i, (m, board) in enumerate([(ai, mainboard), (d_game, d_mainboard)]):
-         if steps[i]:
-            continue
-
+   for i, (m, board) in enumerate([(ai, mainboard), (d_game, d_mainboard)]):
+      c = 0
+      while not steps[i]:
+         c += 1
          t0 = time()
          color = m.make_move(board, board.player[1])
          times[i] += time() - t0
