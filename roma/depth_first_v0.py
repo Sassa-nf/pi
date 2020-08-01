@@ -12,6 +12,7 @@ def find_paths(start, lives, dt):
    deadline = time() + dt
 
    got_one = 0
+   iters = 0
    def explore(s, max_depth):
       bs = [([c], n, s1) for c in range(len(s.boundary)) for n, s1 in [s.transition(c)] if n]
       if not bs:
@@ -24,18 +25,21 @@ def find_paths(start, lives, dt):
 
    def paths(s, path):
       nonlocal got_one
+      nonlocal iters
       if got_one and (
           time() > deadline or
           len(path) >= got_one or
           len(path) >= lives):
+         yield None, iters
          return
+      iters += 1
       bs = [((len(p), -n, -cost(s1)), p, s1) for p, n, s1 in explore(s, MAX_DEPTH)]
       bs.sort(key=lambda b: b[0])
       if len(bs[0][1]) <= MAX_DEPTH:
          path = path + bs[0][1]
          if not got_one or got_one > len(path):
             got_one = len(path)
-            yield list(path)
+            yield list(path), iters
          return
       # discard duplicate states; ignore the difference in colour, because we are only interested in whether
       # the coverage and the neighbours are the same - that is, whether we can switch to the same colours
@@ -58,9 +62,13 @@ def move(board, lives):
    min_p = [board.stains[0].colour]
    # find_paths finds at least one path, and the path has at least one node, because we start
    # with empty state that can only transition to board.stains[0]
-   for p in find_paths(start, lives, MAX_TIME):
+   its = []
+   for p, it in find_paths(start, lives, MAX_TIME):
+      its.append(it)
+      if p is None:
+         break
       min_p = p
-   print('Found a path: %d %s' % (len(min_p), min_p))
+   print('Found a path: %d %s; iterations: %s' % (len(min_p), min_p, its))
    if not best_path or len(best_path) > len(min_p):
       best_path = min_p
    else:
