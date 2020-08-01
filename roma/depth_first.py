@@ -64,32 +64,37 @@ class Game:
          board = Board(board)
          ns[board.stains[0].colour] = {0}
          start = State(0, board, set(), ns)
-         self.suspended.append([[(self.best_path[:self.steps], start)]])
-      min_p = self.best_path
+         if not self.best_path:
+            self.best_path = [board.stains[0].colour]
+         suspended = [[(self.best_path[:self.steps], start)]]
+         self.suspended.append(suspended)
+         self.steps += 1
+      else:
+         gen, thread = divmod(self.steps, MAX_DEPTH + 1)
+         self.steps += 1
 
-      gen, thread = divmod(self.steps, MAX_DEPTH + 1)
+         best_so_far = self.best_path[:self.steps]
+         suspended = self.suspended[thread]
+
+         # discard unexplorable states
+         for i in range(min(gen, len(suspended))):
+            suspended[i] = [(p, s) for p, s in suspended[i] if len(p) <= len(best_so_far) and best_so_far[:len(p)] == p]
+         for i in range(gen, len(suspended)):
+            suspended[i] = [(p, s) for p, s in suspended[i] if len(p) < len(self.best_path) and p[:self.steps] == best_so_far]
+
+      min_p = self.best_path
 
       # find_paths finds at least one path, and the path has at least one node, because we start
       # with empty state that can only transition to board.stains[0]
-      for p in find_paths(self.suspended[thread], lives, MAX_TIME):
-         if p[:self.steps] != self.best_path[:self.steps]:
-            # started to explore unreachable states
-            self.suspended[thread] = []
-            break
+      for p in find_paths(suspended, lives, MAX_TIME):
          min_p = p
       print('Found a path: %d %s' % (len(min_p), min_p))
-      if not self.best_path or len(self.best_path) > len(min_p):
+      if self.steps == 1 or len(self.best_path) > len(min_p):
          self.best_path = min_p
       else:
          min_p = self.best_path
          print('Best path so far still: %d %s' % (len(min_p), min_p))
 
-      # discard unreachable space: once the game advances beyond the steps, no need to explore
-      # the possibilities that could result in other steps
-      if gen and len(self.suspended[thread]) >= gen:
-         self.suspended[thread][gen-1] = []
-
-      self.steps += 1
       if self.steps >= len(min_p):
          return -1
 
