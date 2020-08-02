@@ -33,7 +33,7 @@ def find_paths(resume, lives, dt):
          return
 
       bs = []
-      while resume[-1] and len(bs) < MAX_WIDTH:
+      while resume[-1] and (not bs or got_one and len(bs) < MAX_WIDTH):
          path, s = resume[-1].pop()
          if got_one and len(path) >= got_one:
             continue
@@ -73,7 +73,7 @@ class Game:
          if not self.best_path:
             self.best_path = [board.stains[0].colour]
          suspended = [[(self.best_path[:self.steps], start)]]
-         self.suspended.append(suspended)
+         #self.suspended.append(suspended)
          self.steps += 1
       else:
          self.steps += 1
