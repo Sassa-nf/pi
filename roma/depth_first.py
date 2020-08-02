@@ -33,7 +33,7 @@ def find_paths(resume, lives, dt):
          return
 
       bs = []
-      while resume[-1] and (not bs or got_one and len(bs) < MAX_WIDTH):
+      while resume[-1] and (not bs or got_one and len(bs) < MAX_WIDTH and time() <= deadline):
          path, s = resume[-1].pop()
          if got_one and len(path) >= got_one:
             continue

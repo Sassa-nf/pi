@@ -374,21 +374,23 @@ def main():
                     color1 = ai.make_move(d_mainboard, d_mainboard.player[1])
                     color = d_game.make_move(mainboard, mainboard.player[1])
                     print('AI vs Depth-first: %s %s' % (color, color1))
-                    if color1 is not None:
+                    if color is not None:
                         paletteClicked = color
                     if color < 0:
                         print('Are you not done yet? Depth-first has finished')
-                    else:
+                    elif color1 is not None:
                         d_mainboard.move(1, color1)
                 elif is_reset_button_pressed():
                     f_resetGame = True # clicked on Reset button
                 elif is_undo_button_pressed():
+                    d_game = d_ai.new_game()
                     print('Undo pressed')
 
                     if state_history:
                         state = state_history.pop()
                         mainboard.undo_to(state)
                 else:
+                    d_game = d_ai.new_game()
                     # check if a palette button was clicked
                     paletteClicked = get_color_of_palette_at(mouse_x, mouse_y)
             elif event.type == KEYDOWN:
