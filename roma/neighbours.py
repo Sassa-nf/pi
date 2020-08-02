@@ -46,12 +46,18 @@ class Board:
    def __str__(self):
       return '\n'.join(['%d: %s' % (i, s) for i, s in enumerate(self.stains)])
 
+STATES = 0
 class State:
-   def __init__(self, path, board, coloured, boundary):
+   def __init__(self, path, board, coloured, boundary, parent=None):
+      global STATES
+
       self.path = path
       self.board = board
       self.coloured = coloured
       self.boundary = boundary
+      self.id = STATES
+      STATES += 1
+      self.parent = parent
 
    def __eq__(self, other):
       return (len(self.coloured) == len(other.coloured) and
@@ -64,7 +70,7 @@ class State:
               sum([b.__hash__() for bs in self.boundary for b in bs]))
 
    def __str__(self):
-      return 'State[%d] covering %s and bordering with %s' % (self.path, self.coloured, self.boundary)
+      return 'State[%d] %d covering %s and bordering with %s' % (self.id, self.path, self.coloured, self.boundary)
 
    def transition(self, colour):
       new = self.boundary[colour]
@@ -81,7 +87,8 @@ class State:
                continue
             boundary[self.board.stains[n].colour].add(n)
 
-      return len(new), State(self.path + 1, self.board, coloured, boundary)
+      r = State(self.path + 1, self.board, coloured, boundary, self)
+      return len(new), r
 
 def walk(board, queue, f):
    visit = [[True for _ in b] for b in board]

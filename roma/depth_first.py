@@ -4,7 +4,7 @@ from time import time
 
 MAX_DEPTH = 5
 MAX_TIME = 1
-MAX_WIDTH = 1000
+MAX_WIDTH = 100
 
 def cost(state):
    return sum([len(b) for b in state.boundary])
@@ -29,7 +29,7 @@ def find_paths(resume, lives, dt):
          resume.pop()
          continue
       if got_one and time() > deadline:
-         yield None, iters
+         yield None, None, iters
          return
 
       bs = []
@@ -46,7 +46,7 @@ def find_paths(resume, lives, dt):
          path = bs[-1][1]
          if not got_one or got_one > len(path):
             got_one = len(path)
-            yield list(path), iters
+            yield list(path), bs[-1][-1], iters
          continue
       # discard duplicate states; ignore the difference in colour, because we are only interested in whether
       # the coverage and the neighbours are the same - that is, whether we can switch to the same colours
@@ -55,7 +55,7 @@ def find_paths(resume, lives, dt):
                                   if bs[i+1][0] != bs[i][0] or bs[i+1][2] != bs[i][2]] +
             [(bs[-1][1], bs[-1][2])])
       resume.append(bs)
-   yield None, iters
+   yield None, None, iters
 
 class Game:
    def __init__(self):
@@ -64,17 +64,20 @@ class Game:
       self.suspended = []
 
    def move(self, board, lives):
-      if not self.suspended or len(self.suspended) <= MAX_DEPTH:
-         colours = max([max(b) for b in board]) + 1
-         ns = [set() for _ in range(colours)]
-         board = Board(board)
-         ns[board.stains[0].colour] = {0}
-         start = State(0, board, set(), ns)
-         if not self.best_path:
-            self.best_path = [board.stains[0].colour]
-         suspended = [[(self.best_path[:self.steps], start)]]
-         #self.suspended.append(suspended)
+      if self.steps <= MAX_DEPTH:
          self.steps += 1
+         if not self.suspended:
+            colours = max([max(b) for b in board]) + 1
+            ns = [set() for _ in range(colours)]
+            board_model = Board(board)
+            start_colour = board_model.stains[0].colour
+            ns[start_colour] = {0}
+            _, start = State(0, board_model, set(), ns).transition(start_colour)
+            self.best_path = [start_colour]
+         else:
+            start = self.best_history[self.steps]
+         suspended = [[(self.best_path[:self.steps], start)]]
+         self.suspended.append(suspended)
       else:
          self.steps += 1
 
@@ -95,17 +98,28 @@ class Game:
       # find_paths finds at least one path, and the path has at least one node, because we start
       # with empty state that can only transition to board.stains[0]
       its = []
-      for p, it in find_paths(suspended, lives, MAX_TIME):
+      s = None
+      for p, s1, it in find_paths(suspended, lives, MAX_TIME):
          its.append(it)
          if p is None:
             break
+         s = s1
          min_p = p
       print('Found a path: %d %s; iterations: %s' % (len(min_p), min_p, its))
+      old_history = None
       if self.steps == 1 or len(self.best_path) > len(min_p):
+         if self.steps > 1:
+            old_history = self.best_history
          self.best_path = min_p
+         self.best_history = []
+         p = s
+         while p:
+            self.best_history.append(p)
+            p = p.parent
+         self.best_history.reverse()
       else:
          min_p = self.best_path
-         print('Best path so far still: %d %s' % (len(min_p), min_p))
+         print('Best path so far still: %d %s > %s' % (len(min_p), min_p[:self.steps], min_p[self.steps:] if self.steps < len(min_p) else []))
 
       if self.steps >= len(min_p):
          return -1
