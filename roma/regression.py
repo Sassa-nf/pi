@@ -20,7 +20,11 @@ def run():
          t0 = time()
          color = m.make_move(board, board.player[1])
          times[i] += time() - t0
-         board.move(1, color)
+
+         if color < 0 or color is None:
+            board.player[1].life = 0
+         else:
+            board.move(1, color)
          if board.has_won(1):
             steps[i] = c
          elif board.player[1].life == 0:
@@ -32,9 +36,9 @@ for _ in range(100):
    (ai_r, d_ai_r), board = run()
    print('Last known good Depth-first: %s steps, %.3f seconds' % ai_r)
    print('Depth-first: %s steps, %.3f seconds' % d_ai_r)
-   print('PASS' if d_ai_r[0] <= ai_r[0] else ('FAIL\n\n' + '\n'.join([''.join([str(c) for c in b]) for b in board])))
+   print('PASS' if 0 < d_ai_r[0] <= ai_r[0] else ('FAIL\n\n' + '\n'.join([''.join([str(c) for c in b]) for b in board])))
    print('-----------------------------------')
    results.append((ai_r, d_ai_r))
-   if d_ai_r[0] > ai_r[0]:
-      break
+   #if d_ai_r[0] > ai_r[0]:
+   #   break
 print(results)
