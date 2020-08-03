@@ -60,13 +60,10 @@ class State:
       self.parent = parent
 
    def __eq__(self, other):
-      return (self.coloured == other.coloured and
-              [len(b) for b in self.boundary] == [len(b) for b in other.boundary] and
-              self.boundary == other.boundary)
+      return self.coloured == other.coloured
 
    def __hash__(self):
-      return (self.coloured.__hash__() +
-              sum([b.__hash__() for bs in self.boundary for b in bs]))
+      return self.coloured.__hash__()
 
    def __str__(self):
       return 'State[%d] %d covering %x and bordering with %s' % (self.id, self.path, self.coloured, self.boundary)
