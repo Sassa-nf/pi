@@ -3,25 +3,35 @@ from neighbours import *
 from time import time
 
 MAX_DEPTH = 5
+MAX_THREADS = MAX_DEPTH + 1
 MAX_TIME = 1
 MAX_WIDTH = 100
 
 def cost(state):
    return sum([len(b) for b in state.boundary])
 
-def find_paths(resume, lives, dt):
+def find_paths(resume, best_so_far, lives, dt):
    deadline = time() + dt
 
    got_one = 0
    iters = 0
-   def explore(s, max_depth):
-      bs = [([c], n, s1) for c in range(len(s.boundary)) for n, s1 in [s.transition(c)] if n]
+   def explore(s, curr, max_depth):
+      # the pruning of unreachable states is done upon entry, but also ensure that we do not produce
+      # unreachable state - best_so_far represents the best path that has been found in other threads
+      # perhaps; the state of this thread may store a shorter starting point that passes the pruning;
+      # need to ensure we do not produce continuations that pruning could not see
+      if curr < len(best_so_far):
+         c = best_so_far[curr]
+         n, s1 = s.transition(c)
+         bs = [([c], n, s1)] if n else []
+      else:
+         bs = [([c], n, s1) for c in range(len(s.boundary)) for n, s1 in [s.transition(c)] if n]
       if not bs:
          bs = [([], 0, s)]
       if not max_depth:
          return bs
 
-      bs = [(cs + cs1, n + n1, s1) for cs, n, s in bs for cs1, n1, s1 in explore(s, max_depth-1)]
+      bs = [(cs + cs1, n + n1, s1) for cs, n, s in bs for cs1, n1, s1 in explore(s, curr+1, max_depth-1)]
       return bs
 
    while resume:
@@ -38,7 +48,7 @@ def find_paths(resume, lives, dt):
          if got_one and len(path) >= got_one:
             continue
          iters += 1
-         bs += [((-len(p), n, cost(s1)), path + p, s1) for p, n, s1 in explore(s, MAX_DEPTH)]
+         bs += [((-len(p), n, cost(s1)), path + p, s1) for p, n, s1 in explore(s, len(path), MAX_DEPTH)]
       if not bs:
          continue
       bs.sort(key=lambda b: b[0])
@@ -64,9 +74,9 @@ class Game:
       self.suspended = []
 
    def move(self, board, lives):
-      if self.steps <= MAX_DEPTH:
-         self.steps += 1
-         if not self.suspended:
+      self.steps += 1
+      if self.steps <= MAX_THREADS:
+         if self.steps == 1:
             colours = max([max(b) for b in board]) + 1
             ns = [set() for _ in range(colours)]
             board_model = Board(board)
@@ -76,11 +86,10 @@ class Game:
             self.best_path = [start_colour]
          else:
             start = self.best_history[self.steps]
-         suspended = [[(self.best_path[:self.steps], start)]]
+         best_so_far = self.best_path[:self.steps]
+         suspended = [[(best_so_far, start)]]
          self.suspended.append(suspended)
       else:
-         self.steps += 1
-
          best_so_far = self.best_path[:self.steps]
          suspended = self.suspended.pop(0)
          while self.suspended and not suspended:
@@ -99,7 +108,7 @@ class Game:
       # with empty state that can only transition to board.stains[0]
       its = []
       s = None
-      for p, s1, it in find_paths(suspended, lives, MAX_TIME):
+      for p, s1, it in find_paths(suspended, best_so_far, lives, MAX_TIME):
          its.append(it)
          if p is None:
             break
