@@ -4,6 +4,7 @@ from time import time
 
 MAX_DEPTH = 5
 MAX_THREADS = MAX_DEPTH + 1
+MAX_ROOTS = 3 * MAX_THREADS
 MAX_TIME = 1
 MAX_WIDTH = 100
 
@@ -101,6 +102,14 @@ class Game:
             suspended[i] = [(p, s) for p, s in suspended[i]
                                    if (best_so_far[:len(p)] == p if len(p) <= len(best_so_far)
                                        else (len(p) < len(self.best_path) and p[:self.steps] == best_so_far))]
+         if self.steps <= MAX_ROOTS and suspended:
+            # pick the second best from the existing root
+            # - assuming the best is somewhere further along the list of suspensions
+            while suspended and not suspended[0]:
+               suspended.pop(0)
+            if suspended:
+               suspended = [[suspended[0].pop()]]
+               self.suspended.append(suspended)
 
       min_p = self.best_path
       deadline = time() + MAX_TIME
