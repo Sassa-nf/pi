@@ -11,6 +11,14 @@ import random as rnd
 import sys, webbrowser, copy, pygame
 from pygame.locals import *
 
+hlp = \
+"""Help
+'s' - for settings
+'h' - for help
+'1'-'9' - AI depth
+'m' - switches among 1 and 2 players mode (initially 2 players)
+'space' - move"""
+
 # There are different box sizes, number of boxes, and
 # life depending on the "board size" setting selected.
 SMALLBOXSIZE  = 60 # size is in pixels
@@ -47,7 +55,7 @@ DARKGRAY = ( 70,  70,  70)
 BLACK    = (  0,   0,   0)
 RED      = (255,   0,   0)
 GREEN    = (  0, 255,   0)
-BLUE     = (  0,   0, 255)
+BLUE     = ( 90,  90, 255)
 YELLOW   = (255, 255,   0)
 ORANGE   = (255, 128,   0)
 PURPLE   = (255,   0, 255)
@@ -68,33 +76,43 @@ class Action(enum.Enum):
     cell_change = 1
     life_change = 2
     color_change = 3
-    score_change = 4
+    area_change = 4
     border_change = 5
+    player_change = 6
 
 class Player:
-    def __init__(self, num=None, coord=(None, None), color=None, life=None, score=None, border=[]):
+    def __init__(self, num=None, coord=(None, None), color=None, life=None, area=None, border=[]):
         self.coord = coord
         self.color = color
         self.life = life
-        self.score = score
+        self.area = area
         self.border = border
         self.num = num
 
 class Board():
-    def __init__(self, width, height, palette_colors, other=None):
+    def __init__(self, width, height, players_num, palette_colors, other=None):
+        assert 1 <= players_num <= 2
+
         self.field = []
         self.width = width
         self.height = height
         self.palette_colors = palette_colors
         self.difficulty = difficulty
         self.history = []
+
         # players start at 1 because there is 0 color, if 0 is accessed it should give an error
         self.player = []
         self.player.append(Player())
-
         # life is incremented because move decreases it at the start, score is 1 because first cell belongs to player
-        coord = (0, 0)
-        self.player.append(Player(num=len(self.player), coord=coord, color=None, life=maxLife + 1, score=1, border=[coord]))
+        coord1 = (0, 0)
+        self.player.append(Player(num=len(self.player), coord=coord1, color=None, life=maxLife + 1, area=0, border=[coord1]))
+        if players_num == 2:
+            coord2 = (width - 1, height - 1)
+            self.player.append(Player(num=len(self.player), coord=coord2, color=None, life=maxLife + 1, area=0, border=[coord2]))
+
+        self.current_player_num = 1
+        self.current_player = self.player[self.current_player_num]
+
 
         if other:
             self.field = [[c if c >= 0 else other.player[-c].color for c in b] for b in other.field]
@@ -102,13 +120,23 @@ class Board():
             self.generate_random_board()
 
         # init current_color for all players
+        colors_num = len(self.palette_colors)
+        color = rnd.randint(0, colors_num)
         for num in range(1, len(self.player)):
             x, y = self.player[num].coord
-            color = self.field[x][y]
-            self.field[x][y] = -num
+            color = (color + rnd.randint(1, colors_num)) % colors_num
+            self.field[x][y] = color
             self.player[num].color = None
-            self.move(num, color)
+            self.move(color)
 
+
+    def get_current_player_num(self):
+        return self.current_player_num
+
+    def _set_current_player_num(self, player_num):
+        self.history.append({'action': Action.player_change, 'value': self.current_player_num})
+        self.current_player_num = player_num
+        self.current_player = self.player[player_num]
 
     def _set_color(self, x, y, color):
         self.history.append({'action': Action.cell_change, 'value': (x, y, self.field[x][y])})
@@ -125,9 +153,9 @@ class Board():
         self.history.append({'action': Action.life_change, 'value': (player_num, self.player[player_num].life)})
         self.player[player_num].life = life
 
-    def _set_player_score(self, player_num, score):
-        self.history.append({'action': Action.score_change, 'value': (player_num, self.player[player_num].score)})
-        self.player[player_num].score = score
+    def _set_player_area(self, player_num, area):
+        self.history.append({'action': Action.area_change, 'value': (player_num, self.player[player_num].area)})
+        self.player[player_num].area = area
 
     def _set_player_color(self, player_num, color):
         self.history.append({'action': Action.color_change, 'value': (player_num, self.player[player_num].color)})
@@ -151,12 +179,16 @@ class Board():
             elif change['action'] == Action.color_change:
                 num, color = change['value']
                 self.player[num].color = color
-            elif change['action'] == Action.score_change:
-                num, score = change['value']
-                self.player[num].score = score
+            elif change['action'] == Action.area_change:
+                num, area = change['value']
+                self.player[num].area = area
             elif change['action'] == Action.border_change:
                 num, border = change['value']
                 self.player[num].border = border
+            elif change['action'] == Action.player_change:
+                player_num = change['value']
+                self.current_player_num = player_num
+                self.current_player = self.player[player_num]
             else:
                 raise Exception(f"Unknown action in boards history {change['action']}")
             t -= 1
@@ -171,15 +203,42 @@ class Board():
         tempSurf = pygame.Surface(DISPLAYSURF.get_size())
         tempSurf = tempSurf.convert_alpha()
         tempSurf.fill((0, 0, 0, 0))
+        dif_lst = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        fade = 1
 
         for x in range(self.width):
             for y in range(self.height):
-                left, top = get_left_top_pixelcoord_of_cells(x, y)
+                cell_x0, cell_y0 = get_left_top_pixelcoord_of_cells(x, y)
                 color = self.get_color(x, y)
+
+                player_num = - self.get_value(x, y)
                 r, g, b = paletteColors[color]
-                pygame.draw.rect(tempSurf, (r, g, b, transparency), (left, top, boxSize, boxSize))
-        left, top = get_left_top_pixelcoord_of_cells(0, 0)
-        pygame.draw.rect(tempSurf, BLACK, (left - 1, top - 1, boxSize * boardWidth + 1, boxSize * boardHeight + 1), 1)
+                if player_num > 0 and player_num == self.current_player_num:
+                    r, g, b = int(r * fade), int(g * fade), int(b * fade)
+
+                pygame.draw.rect(tempSurf, (r, g, b, transparency), (cell_x0, cell_y0, boxSize, boxSize))
+
+                # draw dark border around area
+                player_num = -self.get_value(x, y)
+                if player_num > 0:
+                    cell_x1 = cell_x0 + boxSize
+                    cell_y1 = cell_y0 + boxSize
+                    for dx, dy in dif_lst:
+                        xn, yn = x + dx, y + dy
+                        if 0 <= xn < self.width and 0 <= yn < self.height:
+                            if self.get_value(xn, yn) != -player_num:
+                                if dx < 0:
+                                    line_x0, line_y0, line_x1, line_y1 = cell_x0, cell_y0, cell_x0, cell_y1
+                                elif dx > 0:
+                                    line_x0, line_y0, line_x1, line_y1 = cell_x1 - 1, cell_y0, cell_x1 - 1, cell_y1
+                                elif dy < 0:
+                                    line_x0, line_y0, line_x1, line_y1 = cell_x0, cell_y0, cell_x1, cell_y0
+                                elif dy > 0:
+                                    line_x0, line_y0, line_x1, line_y1 = cell_x0, cell_y1 - 1, cell_x1, cell_y1 - 1
+                                pygame.draw.line(tempSurf, (0, 0, 0, transparency), (line_x0, line_y0), (line_x1, line_y1))
+
+        box_x0, box_y0 = get_left_top_pixelcoord_of_cells(0, 0)
+        pygame.draw.rect(tempSurf, BLACK, (box_x0 - 1, box_y0 - 1, boxSize * boardWidth + 1, boxSize * boardHeight + 1), 1)
         DISPLAYSURF.blit(tempSurf, (0, 0))
 
     def generate_random_board(self):
@@ -231,38 +290,51 @@ class Board():
         border = self.player[player_num].border.copy()
         border_new = []
         dif_lst = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        shift = 1000
 
         acquired = 0
         for x, y in border:
-            f_append = False
-            for dx, dy in dif_lst:
-                xn, yn = x + dx, y + dy
-                if 0 <= xn < self.width and 0 <= yn < self.height:
-                    if self.get_value(xn, yn) == color:
-                        self._set_color(xn, yn, -player_num)
-                        border.append((xn, yn))
-                        # border_new.append((xn, yn))
-                        acquired += 1
-                    elif self.get_value(xn, yn) != -player_num:
-                        f_append = True
+            val = self.get_value(x, y)
+            if val != color:
+                if 0 <= val < shift:
+                    self.field[x][y] += shift
+                    border_new.append((x, y))
+            else:
+                self._set_color(x, y, -player_num)
+                acquired += 1
+                for dx, dy in dif_lst:
+                    xn, yn = x + dx, y + dy
+                    if 0 <= xn < self.width and 0 <= yn < self.height:
+                        if self.get_value(xn, yn) != -player_num:
+                            border.append((xn, yn))
 
-            if f_append:
-                border_new.append((x, y))
+        # shift colors back
+        for x, y in border_new:
+            self.field[x][y] -= shift
+
+        assert len(border_new) == len(set(border_new))
 
         return border_new, acquired
 
 
-    def move(self, player_num, color):
+    def move(self, color):
         assert color >= 0
+        # assert color != self.current_player.color
 
-        if color != self.player[player_num].color:
+        player_num = self.current_player_num
+
+        acquired = 0
+        if color != self.current_player.color:
             self._set_player_color(player_num, color)
 
             border_new, acquired = self._border_fill(player_num, color)
 
-            self._set_player_score(player_num, self.player[player_num].score + acquired)
-            self._set_player_life(player_num, self.player[player_num].life - 1)
+            self._set_player_area(player_num, self.current_player.area + acquired)
+            self._set_player_life(player_num, self.current_player.life - 1)
             self._set_player_border(player_num, border_new)
+
+        player_num = (player_num - 1 + 1) % (len(self.player) - 1) + 1
+        self._set_current_player_num(player_num)
 
         return acquired
 
@@ -306,7 +378,7 @@ def main():
         DISPLAYSURF.fill(bgColor)
         draw_logo_and_buttons()
         mainboard.draw()
-        draw_life_meter(mainboard.player[1].life)
+        draw_life_meter(mainboard.current_player.life)
         draw_palettes()
 
     def load_images():
@@ -350,14 +422,16 @@ def main():
     mouse_x = 0
     mouse_y = 0
     f_resetGame = True
+    players_num = 2
 
     while True: # main game loop
         if f_resetGame:
-            mainboard = Board(boardWidth, boardHeight, paletteColors)
-            d_mainboard = Board(boardWidth, boardHeight, paletteColors, mainboard)
+            mainboard = Board(boardWidth, boardHeight, players_num, paletteColors)
+            d_mainboard = Board(boardWidth, boardHeight, players_num, paletteColors, mainboard)
             lastPaletteClicked = mainboard.get_color(0, 0)
 
             state_history = []
+            print(hlp)
 
             f_resetGame = False
             d_game = d_ai.new_game()
@@ -375,7 +449,7 @@ def main():
                 if is_settings_button_pressed():
                     # f_resetGame = showSettingsScreen() # clicked on Settings button
 
-                    color1 = ai.make_move(d_mainboard, d_mainboard.player[1])
+                    color1 = ai.make_move(d_mainboard)
                     color = d_game.make_move(mainboard, mainboard.player[1])
                     print('AI vs Depth-first: %s %s' % (color, color1))
                     if color is not None:
@@ -383,7 +457,7 @@ def main():
                     if color < 0:
                         print('Are you not done yet? Depth-first has finished')
                     elif color1 is not None:
-                        d_mainboard.move(1, color1)
+                        d_mainboard.move(color1)
                 elif is_reset_button_pressed():
                     f_resetGame = True # clicked on Reset button
                 elif is_undo_button_pressed():
@@ -398,16 +472,34 @@ def main():
                     # check if a palette button was clicked
                     paletteClicked = get_color_of_palette_at(mouse_x, mouse_y)
             elif event.type == KEYDOWN:
-                # support up to 9 palette keys
-                try:
-                    key = int(event.unicode)
-                except:
-                    key = None
+                key = event.unicode
 
-                if key != None and key > 0 and key <= len(paletteColors):
-                    paletteClicked = key - 1
+                if key == 's':
+                    f_resetGame = show_settings_screen() # clicked on Settings button
+                elif key == 'h':
+                    print(hlp)
+                elif key == ' ':
+                    paletteClicked = ai.make_move(mainboard)
+                elif key == 'd':
+                    print('Entering debugger mode')
+                elif key == 'm':
+                    players_num = 1 - (players_num - 1) + 1
+                    print(f'Switched to {players_num} mode.')
+                    f_resetGame = True
+                else:
+                    try:
+                        depth = int(key)
+                    except:
+                        depth = None
+                    if depth is not None:
+                        if depth > 0:
+                            print(f'AI depth set to:{depth}')
+                            ai.set_depth(depth)
+                        else:
+                            depth = ai.get_depth()
+                            print(f'Incorrect depth. Current depth is {depth}')
 
-        if paletteClicked != None and paletteClicked != mainboard.get_color(0, 0):
+        if paletteClicked != None:  # and paletteClicked != mainboard.player[mainboard.current_player_num].color:
             # a palette button was clicked that is different from the
             # last palette button clicked (this check prevents the player
             # from accidentally clicking the same palette twice)
@@ -415,7 +507,7 @@ def main():
 
             # lastPaletteClicked = paletteClicked
 
-            mainboard.move(1, paletteClicked)
+            mainboard.move(paletteClicked)
 
             f_resetGame = False
             if mainboard.has_won(1):
@@ -432,6 +524,8 @@ def main():
                     flash_border_animation(BLACK, mainboard)
                 f_resetGame = True
                 pygame.time.wait(2000) # pause so the player can suffer in their defeat
+
+            f_resetGame = False
 
         pygame.display.update()
         FPSCLOCK.tick(FPS)
