@@ -208,8 +208,12 @@ class Board():
             y = rnd.randint(1, self.height - 2)
 
             # Randomly choose neighbors to change.
-            dx = rnd.randint(-1, 1)
-            dy = [-1, 1, 0][rnd.randint(0, 2 if dx else 1)]
+            choice = rnd.randint(0, 7)
+            dx = [-1, 1][choice % 2]
+            if choice > 6:
+               dx, dy = 0, dx
+            else:
+               dy = [-1, 1, 0][choice % 3]
             self.field[x][y] = self.field[x + dx][y + dy]
 
 
