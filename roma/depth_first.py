@@ -10,9 +10,7 @@ MAX_WIDTH = 100
 def cost(state):
    return sum([len(b) for b in state.boundary])
 
-def find_paths(resume, best_so_far, lives, dt):
-   deadline = time() + dt
-
+def find_paths(resume, best_so_far, lives, deadline):
    got_one = 0
    iters = 0
    def explore(s, curr, max_depth):
@@ -48,7 +46,7 @@ def find_paths(resume, best_so_far, lives, dt):
          if got_one and len(path) >= got_one:
             continue
          iters += 1
-         bs += [((-len(p), n, cost(s1)), path + p, s1) for p, n, s1 in explore(s, len(path), MAX_DEPTH)]
+         bs.extend([((-len(p), n, cost(s1)), path + p, s1) for p, n, s1 in explore(s, len(path), MAX_DEPTH)])
       if not bs:
          continue
       bs.sort(key=lambda b: b[0])
@@ -103,12 +101,13 @@ class Game:
                                        else (len(p) < len(self.best_path) and p[:self.steps] == best_so_far))]
 
       min_p = self.best_path
+      deadline = time() + MAX_TIME
 
       # find_paths finds at least one path, and the path has at least one node, because we start
       # with empty state that can only transition to board.stains[0]
       its = []
       s = None
-      for p, s1, it in find_paths(suspended, best_so_far, lives, MAX_TIME):
+      for p, s1, it in find_paths(suspended, best_so_far, lives, deadline):
          its.append(it)
          if p is None:
             break
