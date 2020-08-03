@@ -12,7 +12,7 @@ def find_paths(start, lives, dt):
    deadline = time() + dt
 
    got_one = 0
-   iters = 0
+   timing = 0
    def explore(s, max_depth):
       bs = [([c], n, s1) for c in range(len(s.boundary)) for n, s1 in [s.transition(c)] if n]
       if not bs:
@@ -25,21 +25,23 @@ def find_paths(start, lives, dt):
 
    def paths(s, path):
       nonlocal got_one
-      nonlocal iters
+      nonlocal timing
       if got_one and (
           time() > deadline or
           len(path) >= got_one or
           len(path) >= lives):
-         yield None, iters
+         yield None, timing
          return
-      iters += 1
+      t0 = time()
       bs = [((len(p), -n, -cost(s1)), p, s1) for p, n, s1 in explore(s, MAX_DEPTH)]
+      timing += time() - t0
       bs.sort(key=lambda b: b[0])
       if len(bs[0][1]) <= MAX_DEPTH:
          path = path + bs[0][1]
          if not got_one or got_one > len(path):
             got_one = len(path)
-            yield list(path), iters
+            yield list(path), timing
+            timing = 0
          return
       # discard duplicate states; ignore the difference in colour, because we are only interested in whether
       # the coverage and the neighbours are the same - that is, whether we can switch to the same colours

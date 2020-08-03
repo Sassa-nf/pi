@@ -12,7 +12,7 @@ def cost(state):
 
 def find_paths(resume, best_so_far, lives, deadline):
    got_one = 0
-   pruning = 0
+   timing = 0
    def explore(s, curr, max_depth):
       # the pruning of unreachable states is done upon entry, but also ensure that we do not produce
       # unreachable state - best_so_far represents the best path that has been found in other threads
@@ -37,17 +37,17 @@ def find_paths(resume, best_so_far, lives, deadline):
          resume.pop()
          continue
       if got_one and time() > deadline:
-         yield None, None, pruning
+         yield None, None, timing
          return
 
       bs = []
-      t0 = time()
       while resume[-1] and (not bs or got_one and len(bs) < MAX_WIDTH and time() <= deadline):
          path, s = resume[-1].pop()
          if got_one and len(path) >= got_one:
             continue
+         t0 = time()
          bs.extend([((-len(p), n, cost(s1)), path + p, s1) for p, n, s1 in explore(s, len(path), MAX_DEPTH)])
-      pruning += time() - t0
+         timing += time() - t0
       if not bs:
          continue
       bs.sort(key=lambda b: b[0])
@@ -55,7 +55,8 @@ def find_paths(resume, best_so_far, lives, deadline):
          path = bs[-1][1]
          if not got_one or got_one > len(path):
             got_one = len(path)
-            yield list(path), bs[-1][-1], pruning
+            yield list(path), bs[-1][-1], timing
+            timing = 0
          continue
       # discard duplicate states; ignore the difference in colour, because we are only interested in whether
       # the coverage and the neighbours are the same - that is, whether we can switch to the same colours
@@ -64,7 +65,7 @@ def find_paths(resume, best_so_far, lives, deadline):
                                   if bs[i+1][0] != bs[i][0] or bs[i+1][2] != bs[i][2]] +
             [(bs[-1][1], bs[-1][2])])
       resume.append(bs)
-   yield None, None, pruning
+   yield None, None, timing
 
 class Game:
    def __init__(self):
