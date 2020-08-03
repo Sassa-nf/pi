@@ -58,7 +58,7 @@ def move(board, lives):
    ns = [set() for _ in range(colours)]
    board = Board(board)
    ns[board.stains[0].colour] = {0}
-   start = State(0, board, set(), ns)
+   start = State(0, board, 0, ns)
    min_p = [board.stains[0].colour]
    # find_paths finds at least one path, and the path has at least one node, because we start
    # with empty state that can only transition to board.stains[0]

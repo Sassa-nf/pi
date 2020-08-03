@@ -12,7 +12,7 @@ def cost(state):
 
 def find_paths(resume, best_so_far, lives, deadline):
    got_one = 0
-   iters = 0
+   pruning = 0
    def explore(s, curr, max_depth):
       # the pruning of unreachable states is done upon entry, but also ensure that we do not produce
       # unreachable state - best_so_far represents the best path that has been found in other threads
@@ -25,7 +25,7 @@ def find_paths(resume, best_so_far, lives, deadline):
       else:
          bs = [([c], n, s1) for c in range(len(s.boundary)) for n, s1 in [s.transition(c)] if n]
       if not bs:
-         bs = [([], 0, s)]
+         return [([], 0, s)]
       if not max_depth:
          return bs
 
@@ -37,16 +37,17 @@ def find_paths(resume, best_so_far, lives, deadline):
          resume.pop()
          continue
       if got_one and time() > deadline:
-         yield None, None, iters
+         yield None, None, pruning
          return
 
       bs = []
+      t0 = time()
       while resume[-1] and (not bs or got_one and len(bs) < MAX_WIDTH and time() <= deadline):
          path, s = resume[-1].pop()
          if got_one and len(path) >= got_one:
             continue
-         iters += 1
          bs.extend([((-len(p), n, cost(s1)), path + p, s1) for p, n, s1 in explore(s, len(path), MAX_DEPTH)])
+      pruning += time() - t0
       if not bs:
          continue
       bs.sort(key=lambda b: b[0])
@@ -54,7 +55,7 @@ def find_paths(resume, best_so_far, lives, deadline):
          path = bs[-1][1]
          if not got_one or got_one > len(path):
             got_one = len(path)
-            yield list(path), bs[-1][-1], iters
+            yield list(path), bs[-1][-1], pruning
          continue
       # discard duplicate states; ignore the difference in colour, because we are only interested in whether
       # the coverage and the neighbours are the same - that is, whether we can switch to the same colours
@@ -63,7 +64,7 @@ def find_paths(resume, best_so_far, lives, deadline):
                                   if bs[i+1][0] != bs[i][0] or bs[i+1][2] != bs[i][2]] +
             [(bs[-1][1], bs[-1][2])])
       resume.append(bs)
-   yield None, None, iters
+   yield None, None, pruning
 
 class Game:
    def __init__(self):
@@ -80,7 +81,7 @@ class Game:
             board_model = Board(board)
             start_colour = board_model.stains[0].colour
             ns[start_colour] = {0}
-            _, start = State(0, board_model, set(), ns).transition(start_colour)
+            _, start = State(0, board_model, 0, ns).transition(start_colour)
             self.best_path = [start_colour]
          else:
             start = self.best_history[self.steps]

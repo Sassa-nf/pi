@@ -60,30 +60,31 @@ class State:
       self.parent = parent
 
    def __eq__(self, other):
-      return (len(self.coloured) == len(other.coloured) and
+      return (self.coloured == other.coloured and
               [len(b) for b in self.boundary] == [len(b) for b in other.boundary] and
-              self.coloured == other.coloured and
               self.boundary == other.boundary)
 
    def __hash__(self):
-      return (sum([c.__hash__() for c in self.coloured]) +
+      return (self.coloured.__hash__() +
               sum([b.__hash__() for bs in self.boundary for b in bs]))
 
    def __str__(self):
-      return 'State[%d] %d covering %s and bordering with %s' % (self.id, self.path, self.coloured, self.boundary)
+      return 'State[%d] %d covering %x and bordering with %s' % (self.id, self.path, self.coloured, self.boundary)
 
    def transition(self, colour):
       new = self.boundary[colour]
       if not new:
          return 0, None
 
-      coloured = self.coloured | new
-
       boundary = [set(v) for v in self.boundary]
       boundary[colour] = set()
+
+      coloured = self.coloured
+      for s in new:
+         coloured = coloured | 1 << s
       for s in new:
          for n in self.board.stains[s].neighbours:
-            if n in coloured:
+            if coloured & 1 << n:
                continue
             boundary[self.board.stains[n].colour].add(n)
 
