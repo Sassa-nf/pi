@@ -52,7 +52,7 @@ def find_paths(start, lives, dt):
 
 best_path = []
 
-def move(board, lives):
+def f_move(board, lives):
    global best_path
    colours = max([max(b) for b in board]) + 1
    ns = [set() for _ in range(colours)]
@@ -81,10 +81,18 @@ def move(board, lives):
       return -1
    return min_p[1]
 
-def make_move(mainboard, player):
-   board = [[c if c >= 0 else mainboard.player[-c].color for c in b] for b in mainboard.field]
-   return move(board, player.life)
+class Game:
+   def __init__(self):
+      pass
+
+   def make_move(self, mainboard, player):
+      board = [[c if c >= 0 else mainboard.player[-c].color for c in b] for b in mainboard.field]
+      return self.move(board, player.life)
+
+   def move(self, board, lives):
+      return f_move(board, lives)
 
 def new_game():
    global best_path
    best_path = []
+   return Game()

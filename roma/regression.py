@@ -1,5 +1,5 @@
 from inkspill import *
-import depth_first_v0 as ai
+import depth_first_v0 as v0
 import depth_first as d_ai
 
 from time import time
@@ -7,13 +7,13 @@ from time import time
 def run():
    mainboard = Board(boardWidth, boardHeight, paletteColors)
    d_mainboard = Board(boardWidth, boardHeight, paletteColors, mainboard)
-   ai.new_game()
+   v0_game = v0.new_game()
    d_game = d_ai.new_game()
 
    orig_board = [[c if c >= 0 else mainboard.player[-c].color for c in b] for b in mainboard.field]
    steps = [0, 0]
    times = [0, 0]
-   for i, (m, board) in enumerate([(ai, mainboard), (d_game, d_mainboard)]):
+   for i, (m, board) in enumerate([(v0_game, mainboard), (d_game, d_mainboard)]):
       c = 0
       while not steps[i]:
          c += 1
