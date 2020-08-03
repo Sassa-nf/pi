@@ -89,12 +89,18 @@ class Game:
             start = self.best_history[self.steps]
          best_so_far = self.best_path[:self.steps]
          suspended = [[(best_so_far, start)]]
-         self.suspended.append(suspended)
+         self.suspended = [suspended] + self.suspended
       else:
          best_so_far = self.best_path[:self.steps]
+
+      deadline = time() + MAX_TIME
+      while time() < deadline and self.suspended:
          suspended = self.suspended.pop(0)
          while self.suspended and not suspended:
             suspended = self.suspended.pop(0)
+
+         if not self.suspended and not suspended:
+            break
          self.suspended.append(suspended)
 
          # discard unexplorable states
@@ -111,9 +117,19 @@ class Game:
                suspended = [[suspended[0].pop()]]
                self.suspended.append(suspended)
 
-      min_p = self.best_path
-      deadline = time() + MAX_TIME
+         self._deep_explore(suspended, best_so_far, lives, deadline)
 
+      min_p = self.best_path
+
+      if self.steps >= len(min_p):
+         return -1
+
+      if self.steps == len(min_p) - 1:
+         print('Done! in %s steps' % self.steps)
+      return min_p[self.steps]
+
+   def _deep_explore(self, suspended, best_so_far, lives, deadline):
+      min_p = self.best_path
       # find_paths finds at least one path, and the path has at least one node, because we start
       # with empty state that can only transition to board.stains[0]
       its = []
@@ -140,12 +156,6 @@ class Game:
          min_p = self.best_path
          print('Best path so far still: %d %s > %s' % (len(min_p), min_p[:self.steps], min_p[self.steps:] if self.steps < len(min_p) else []))
 
-      if self.steps >= len(min_p):
-         return -1
-
-      if self.steps == len(min_p) - 1:
-         print('Done! in %s steps' % self.steps)
-      return min_p[self.steps]
 
    def make_move(self, mainboard, player):
       board = [[c if c >= 0 else mainboard.player[-c].color for c in b] for b in mainboard.field]
