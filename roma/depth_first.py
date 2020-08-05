@@ -6,7 +6,7 @@ MAX_DEPTH = 5
 MAX_THREADS = MAX_DEPTH + 1
 MAX_ROOTS = 3 * MAX_THREADS
 MAX_TIME = 1
-MAX_WIDTH = 100
+MIN_WIDTH = 10000
 
 def cost(state):
    return sum([len(b) for b in state.boundary])
@@ -42,7 +42,7 @@ def find_paths(resume, best_so_far, lives, deadline):
          return
 
       bs = []
-      while resume[-1] and (not bs or got_one and len(bs) < MAX_WIDTH and time() <= deadline):
+      while resume[-1] and (not bs or got_one and len(bs) < MIN_WIDTH and time() <= deadline):
          path, s = resume[-1].pop()
          if got_one and len(path) >= got_one:
             continue
