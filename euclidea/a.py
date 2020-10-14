@@ -148,8 +148,12 @@ class Circle:
          k = (self.r*self.r - rr + dd) / (2 * l)
          cx = self.c.x + k * dx
          cy = self.c.y + k * dy
-         line = Line(Point(cx, cy), self.c)
-         line.v = Point(-dy / l, dx / l)
+         newc = Point(cx, cy)
+         if newc == self.c:
+            line = Line(self.c, Point(-dy, dx))
+         else:
+            line = Line(newc, self.c)
+            line.v = Point(-dy / l, dx / l)
          i1 = line.intersect(self)
          for p in i1:
             dx = shape.c.x - p.x
@@ -161,34 +165,47 @@ class Circle:
       return []
 
 def point(p, shapes, points):
-   return shapes, points.union({p})
+   return shapes, union(points, {p})
 
 def line(p1, p2, shapes, points):
    intersections = set()
    l = Line(p1, p2)
    for s in shapes:
-      intersections = intersections.union({p for p in s.intersect(l) if type(p) == Point})
-   return shapes.union({l}), intersections.union(points).union({p1, p2})
+      intersections = union(intersections, {p for p in s.intersect(l) if type(p) == Point})
+   return union(shapes, {l}), union(intersections, union(points, {p1, p2}))
 
 def circle(c, r, shapes, points):
    intersections = set()
    circle = Circle(c, r)
    for s in shapes:
-      intersections = intersections.union({p for p in s.intersect(circle) if type(p) == Point})
-   return shapes.union({circle}), intersections.union(points).union({c, r})
+      intersections = union(intersections, {p for p in s.intersect(circle) if type(p) == Point})
+   return union(shapes, {circle}), union(intersections, union(points, {c, r}))
 
+
+def intersection(p, q):
+   r = set()
+   for s in p:
+      for z in q:
+         if s == z:
+            r.add(s)
+            break
+   return r
+
+def union(p, q):
+   r = set(p)
+   for z in q:
+      found = False
+      for s in p:
+         if z == s:
+            found = True
+            break
+      if not found:
+         r.add(z)
+   return r
 
 def solve(shapes, points, goal, steps):
    if steps == 1:
-      for g in goal:
-         found = False
-         for s in shapes:
-            if s == g:
-               found = True
-               break
-         if not found:
-            return False
-      return True
+      return intersection(goal, shapes) == shapes
 
    plist = list(points)
    for i in range(len(plist)):
@@ -222,7 +239,7 @@ p2 = Point(cos(-2*pi/3), sin(-2*pi/3))
 
 p3 = Point(cos(4*pi/5), sin(4*pi/5))
 
-solution = solve({c}, {r, p3}, {Line(r, p2)}, 4)
+solution = solve({c}, {r, p3}, {Line(r, p2)}, 5)
 
 if solution:
    print('found! %s' % (solution,))
