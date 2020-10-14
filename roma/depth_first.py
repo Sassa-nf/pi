@@ -2,16 +2,17 @@ from neighbours import *
 
 from time import time
 
-MAX_DEPTH = 5
+MAX_DEPTH = 0
 MAX_THREADS = MAX_DEPTH + 1
 MAX_ROOTS = 3 * MAX_THREADS
 MAX_TIME = 1
 MIN_WIDTH = 10000
+MAX_WIDTH = 100
 
 def cost(state):
    return sum([len(b) for b in state.boundary])
 
-def find_paths(resume, best_so_far, lives, deadline):
+def find_paths(resume, resume_dict, best_so_far, lives, deadline):
    got_one = 0
    timing = 0
    def explore(s, curr, max_depth):
@@ -42,12 +43,22 @@ def find_paths(resume, best_so_far, lives, deadline):
          return
 
       bs = []
-      while resume[-1] and (not bs or got_one and len(bs) < MIN_WIDTH and time() <= deadline):
+      while resume[-1] and len(bs) < MIN_WIDTH and (not got_one or time() <= deadline):
          path, s = resume[-1].pop()
          if got_one and len(path) >= got_one:
             continue
          t0 = time()
-         bs.extend([((-len(p), n, cost(s1)), path + p, s1) for p, n, s1 in explore(s, len(path), MAX_DEPTH)])
+         new_states = [((-len(p), n, cost(s1)), path + p, s1) for p, n, s1 in explore(s, len(path), MAX_DEPTH)]
+         for _, p, s1 in new_states:
+            same_states = resume_dict.setdefault(s1, [])
+            if same_states and same_states[0].path > s1.path:
+               # this is possible only if we are exploring worse paths, which can happen only
+               # after the better paths have been explored to the end; need to re-link
+               # the old results to the new chain
+               same_states.insert(0, (p, s1))
+            else:
+               same_states.append((p, s1))
+         bs.extend(new_states)
          timing += time() - t0
       if not bs:
          continue
@@ -59,12 +70,7 @@ def find_paths(resume, best_so_far, lives, deadline):
             yield list(path), bs[-1][-1], timing
             timing = 0
          continue
-      # discard duplicate states; ignore the difference in colour, because we are only interested in whether
-      # the coverage and the neighbours are the same - that is, whether we can switch to the same colours
-      # from there
-      bs = ([(bs[i][1], bs[i][2]) for i in range(len(bs)-1)
-                                  if bs[i+1][0] != bs[i][0] or bs[i+1][2] != bs[i][2]] +
-            [(bs[-1][1], bs[-1][2])])
+      bs = [(p, s) for _, p, s in bs]
       resume.append(bs)
    yield None, None, timing
 
