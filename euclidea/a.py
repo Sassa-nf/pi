@@ -71,7 +71,7 @@ class Line:
 
       self.name = 'L_%s' % L_NAME
       L_NAME += 1
-      self.proof = '%s...%s' % (p1.name, p2.name)
+      self.proof = ('...', p1, p2)
 
    def __hash__(self):
       return self.p.__hash__() + self.v.__hash__()
@@ -140,7 +140,7 @@ class Circle:
       self.r = sqrt(dx*dx + dy*dy)
       self.name = 'C_%s' % C_NAME
       C_NAME += 1
-      self.proof = '%s -> %s' % (c.name, r.name)
+      self.proof = ('->', c, r)
 
    def __hash__(self):
       return self.c.__hash__() + self.r.__hash__()
@@ -177,7 +177,7 @@ class Circle:
          line = Line(Point(cx, cy, '(computed)'), Point(cx-dy, cy+dx, '(computed)'))
          i1 = line.intersect(self)
          for p in i1:
-            p.proof = '%s ^ %s' % (self.name, shape.name)
+            p.proof = ('^', self, shape)
             dx = shape.c.x - p.x
             dy = shape.c.y - p.y
             if abs(dx*dx + dy*dy - rr) > EPSILON:
@@ -255,17 +255,51 @@ def solve(shapes, points, goal, steps):
                return solution
    return False
 
+def new_name(name):
+   if name[0] == 'Z':
+      if len(name) == 1:
+         name = name + '0'
+      name = 'A%s' % (int(name[1:]) + 1)
+   else:
+      name = chr(ord(name[0])+1) + name[1:]
+
+   return name
+
 def print_solution(solution):
    shapes, points = solution
-   for p in points:
-      print('%s = %s' % (p.name, p.proof))
+   p = set()
+   for s in shapes:
+      if type(s.proof) == str:
+         continue
+      for p1 in s.proof[1:]:
+         p.add(p1)
+
+   name = 'A'
+   for p1 in p:
+      p1.name = name
+      name = new_name(name)
 
    for s in shapes:
-      print('%s = %s' % (s.name, s.proof))
+      s.name = name
+      name = new_name(name)
+
+   for p in points:
+      proof = p.proof
+      if type(proof) != str:
+         o, p1, p2 = proof
+         proof = '%s %s %s' % (p1.name, o, p2.name)
+      print('%s = %s' % (p.name, proof))
+
+   for s in shapes:
+      proof = s.proof
+      if type(proof) != str:
+         o, p1, p2 = proof
+         proof = '%s %s %s' % (p1.name, o, p2.name)
+      print('%s = %s' % (s.name, proof))
 
 r = Point(1,0, '(given)')
 c = Circle(Point(0,0, '(not given)'), r)
-c.proof = '(given)'
+c.proof = '(given circle)'
 
 p1 = Point(cos(2*pi/3), sin(2*pi/3), '(goal)')
 p2 = Point(cos(-2*pi/3), sin(-2*pi/3), '(goal)')
