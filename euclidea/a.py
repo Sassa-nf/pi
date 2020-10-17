@@ -3,7 +3,7 @@ from math import sin, cos, sqrt, pi
 def sgn(a):
    return -1 if a < 0 else 1
 
-EPSILON = 0.001
+EPSILON = 0.0000001
 P_NAME = 0
 L_NAME = 0
 C_NAME = 0
@@ -108,7 +108,7 @@ class Line:
             return []
 
          t = ((shape.p.x - self.p.x) * self.v.y - (shape.p.y - self.p.y) * self.v.x) / (shape.v.x * self.v.y - shape.v.y * self.v.x)
-         return [Point(shape.p.x + shape.v.x * t, shape.p.y + shape.v.y * t, '%s ^ %s' % (self.name, shape.name))]
+         return [Point(shape.p.x + shape.v.x * t, shape.p.y + shape.v.y * t, ('^', self, shape))]
 
       if type(shape) == Circle:
          #    |x1  y1|
@@ -121,9 +121,9 @@ class Line:
             
          dd = sqrt(discriminant)
          p1 = Point(shape.c.x + det * self.v.y + sgn(self.v.y) * self.v.x * dd,
-                    shape.c.y + (-det) * self.v.x + abs(self.v.y) * dd, '%s ^ %s' % (self.name, shape.name))
+                    shape.c.y + (-det) * self.v.x + abs(self.v.y) * dd, ('^', self, shape))
          p2 = Point(shape.c.x + det * self.v.y - sgn(self.v.y) * self.v.x * dd,
-                    shape.c.y + (-det) * self.v.x - abs(self.v.y) * dd, '%s ^ %s' % (self.name, shape.name))
+                    shape.c.y + (-det) * self.v.x - abs(self.v.y) * dd, ('^', self, shape))
          if p1 == p2:
             return [p1]
          return [p1, p2]
@@ -228,6 +228,12 @@ def union(p, q):
 def solve(shapes, points, goal, steps):
    if steps == 0:
       if intersection(goal, shapes) == goal:
+         for q in shapes:
+            for p in goal:
+               if p == q:
+                  print('%s == %s' % (p, q))
+                  q.proof = ('->' + q.proof[0] + '<-', q.proof[1], q.proof[2])
+                  break
          return shapes, points
       return False
 
@@ -304,7 +310,7 @@ c.proof = '(given circle)'
 p1 = Point(cos(2*pi/3), sin(2*pi/3), '(goal)')
 p2 = Point(cos(-2*pi/3), sin(-2*pi/3), '(goal)')
 
-p3 = Point(cos(4*pi/5), sin(4*pi/5), '(arbitrary)')
+p3 = Point(cos(3*pi/5), sin(4*pi/5), '(arbitrary)')
 
 solution = solve({c}, {r, p3}, {Line(r, p2)}, 4)
 
