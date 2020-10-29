@@ -1,4 +1,4 @@
-from math import sin, cos, sqrt, pi
+from math import sin, cos, sqrt, pi, tan
 
 def sgn(a):
    return -1 if a < 0 else 1
@@ -187,31 +187,34 @@ class Circle:
       return []
 
 def point(p, shapes, points):
-   return shapes, union(points, {p})
+   return {}, union(points, {p})
 
 def line(p1, p2, shapes, points):
    intersections = {p1, p2}
    l = Line(p1, p2)
    for s in shapes:
       intersections = union(intersections, {p for p in s.intersect(l) if type(p) == Point})
-   return union(shapes, {l}), union(intersections, points)
+   return l, union(intersections, points)
 
 def circle(c, r, shapes, points):
    intersections = {c, r}
    circle = Circle(c, r)
    for s in shapes:
       intersections = union(intersections, {p for p in s.intersect(circle) if type(p) == Point})
-   return union(shapes, {circle}), union(intersections, points)
+   return circle, union(intersections, points)
 
 
 def intersection(p, q):
    r = set()
+   not_r = set()
    for s in p:
+      found = False
       for z in q:
          if s == z:
-            r.add(s)
+            found = True
             break
-   return r
+      (r if found else not_r).add(s)
+   return r, not_r
 
 def union(p, q):
    r = set(p)
@@ -226,15 +229,13 @@ def union(p, q):
    return r
 
 def solve(shapes, points, goal, steps):
+   if len(goal) > steps:
+      g1, goal = intersection(goal, shapes)
+
+   if not goal:
+      return shapes, points
+
    if steps == 0:
-      if intersection(goal, shapes) == goal:
-         for q in shapes:
-            for p in goal:
-               if p == q:
-                  print('%s == %s' % (p, q))
-                  q.proof = ('->' + q.proof[0] + '<-', q.proof[1], q.proof[2])
-                  break
-         return shapes, points
       return False
 
    plist = list(points)
@@ -245,7 +246,15 @@ def solve(shapes, points, goal, steps):
          l = Line(p1, p2)
          if l not in shapes:
             ss, pp = line(p1, p2, shapes, points)
-            solution = solve(ss, pp, goal, steps-1)
+            if len(goal) < steps:
+               g1, g2 = None, goal
+            else:
+               g1, g2 = intersection(goal, {ss})
+            if len(g2) > steps:
+               continue
+            if g1:
+               ss.proof = ('->' + ss.proof[0] + '<-', ss.proof[1], ss.proof[2])
+            solution = solve(union(shapes, {ss}), pp, g2, steps-1)
             if solution:
                return solution
 
@@ -256,7 +265,15 @@ def solve(shapes, points, goal, steps):
          c = Circle(p1, p2)
          if c not in shapes:
             ss, pp = circle(p1, p2, shapes, points)
-            solution = solve(ss, pp, goal, steps-1)
+            if len(goal) < steps:
+               g1, g2 = None, goal
+            else:
+               g1, g2 = intersection(goal, {ss})
+            if len(g2) > steps:
+               continue
+            if g1:
+               ss.proof = ('->' + ss.proof[0] + '<-', ss.proof[1], ss.proof[2])
+            solution = solve(union(shapes, {ss}), pp, g2, steps-1)
             if solution:
                return solution
    return False
@@ -303,7 +320,32 @@ def print_solution(solution):
          proof = '%s %s %s' % (p1.name, o, p2.name)
       print('%s = %s' % (s.name, proof))
 
+o = Point(0, 0, '(given)')
+o1 = Point(3, 0, '(given)')
+o2 = Point(1, 2, '(given)')
+ll = Line(o, o1)
+lr = Line(o, o2)
+
+o3 = Point(4, 2, '(goal)')
+#solution = solve({ll, lr}, {o, o1, o2}, {Line(o1, o3), Line(o2, o3)}, 6)
+#if solution:
+#   print('Building a parallelogram:')
+#   print_solution(solution)
+#else:
+#   print('not found...')
+
 r = Point(1,0, '(given)')
+o = Point(0, 0, '(arbitrary)')
+o1 = Point(r.x, (r.x-o.x) * tan(pi/12), '(goal)')
+ll = Line(o, r)
+solution = solve({ll}, {r, o}, {Line(o, o1)}, 5)
+
+if solution:
+   print('Building a 15 degree angle:')
+   print_solution(solution)
+else:
+   print('not found...')
+
 c = Circle(Point(0,0, '(not given)'), r)
 c.proof = '(given circle)'
 
@@ -311,13 +353,6 @@ p1 = Point(cos(2*pi/3), sin(2*pi/3), '(goal)')
 p2 = Point(cos(-2*pi/3), sin(-2*pi/3), '(goal)')
 
 p3 = Point(cos(3*pi/5), sin(4*pi/5), '(arbitrary)')
-
-solution = solve({c}, {r, p3}, {Line(r, p2)}, 4)
-
-if solution:
-   print('found! %s' % (solution,))
-else:
-   print('not found...')
 
 solution = solve({c}, {r, p3}, {Line(p1, p2)}, 4)
 
