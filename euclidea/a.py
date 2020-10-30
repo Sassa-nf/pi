@@ -1,4 +1,5 @@
 from math import sin, cos, sqrt, pi, tan
+import traceback
 
 def sgn(a):
    return -1 if a < 0 else 1
@@ -107,7 +108,7 @@ class Line:
          if self == l: # parallel lines
             return []
 
-         t = ((shape.p.x - self.p.x) * self.v.y - (shape.p.y - self.p.y) * self.v.x) / (shape.v.x * self.v.y - shape.v.y * self.v.x)
+         t = -((shape.p.x - self.p.x) * self.v.y - (shape.p.y - self.p.y) * self.v.x) / (shape.v.x * self.v.y - shape.v.y * self.v.x)
          return [Point(shape.p.x + shape.v.x * t, shape.p.y + shape.v.y * t, ('^', self, shape))]
 
       if type(shape) == Circle:
@@ -228,6 +229,13 @@ def union(p, q):
          r.add(z)
    return r
 
+def included(s, shapes):
+   for ss in shapes:
+      if ss == s:
+         return True
+
+   return False
+
 def solve(shapes, points, goal, steps):
    if len(goal) > steps:
       g1, goal = intersection(goal, shapes)
@@ -244,7 +252,7 @@ def solve(shapes, points, goal, steps):
       for j in range(i):
          p2 = plist[j]
          l = Line(p1, p2)
-         if l not in shapes:
+         if not included(l, shapes):
             ss, pp = line(p1, p2, shapes, points)
             if len(goal) < steps:
                g1, g2 = None, goal
@@ -258,12 +266,15 @@ def solve(shapes, points, goal, steps):
             if solution:
                return solution
 
+   if len(goal) == steps and not [s for s in goal if type(s) == Circle]:
+      return False
+
    for p1 in points:
       for p2 in points:
          if p1 == p2:
             continue
          c = Circle(p1, p2)
-         if c not in shapes:
+         if not included(c, shapes):
             ss, pp = circle(p1, p2, shapes, points)
             if len(goal) < steps:
                g1, g2 = None, goal
@@ -290,15 +301,15 @@ def new_name(name):
 
 def print_solution(solution):
    shapes, points = solution
-   p = set()
+   ps = set()
    for s in shapes:
       if type(s.proof) == str:
          continue
       for p1 in s.proof[1:]:
-         p.add(p1)
+         ps.add(p1)
 
    name = 'A'
-   for p1 in p:
+   for p1 in ps:
       p1.name = name
       name = new_name(name)
 
@@ -306,7 +317,7 @@ def print_solution(solution):
       s.name = name
       name = new_name(name)
 
-   for p in points:
+   for p in ps:
       proof = p.proof
       if type(proof) != str:
          o, p1, p2 = proof
@@ -321,18 +332,27 @@ def print_solution(solution):
       print('%s = %s' % (s.name, proof))
 
 o = Point(0, 0, '(given)')
-o1 = Point(3, 0, '(given)')
-o2 = Point(1, 2, '(given)')
+o1 = Point(3.14, 0, '(given)')
+o2 = Point(1, 2.72, '(given)')
 ll = Line(o, o1)
 lr = Line(o, o2)
+ll.proof = ('...(given)', o, o1)
+lr.proof = ('...(given)', o, o2)
 
-o3 = Point(4, 2, '(goal)')
+for pl in [Line(o2, o), Line(o, o2)]:
+  for rl in [Line(o1, o2), Line(o2, o1)]:
+     for (pp,) in [rl.intersect(pl), pl.intersect(rl)]:
+        if pp != o2:
+           print('uh-oh: %s ^ %s == %s != %s' % (pl, rl, pp, o2))
+
+o3 = Point(4.14, 2.72, '(goal)')
+solution = False
 #solution = solve({ll, lr}, {o, o1, o2}, {Line(o1, o3), Line(o2, o3)}, 6)
-#if solution:
-#   print('Building a parallelogram:')
-#   print_solution(solution)
-#else:
-#   print('not found...')
+if solution:
+   print('Building a parallelogram:')
+   print_solution(solution)
+else:
+   print('not found...')
 
 r = Point(1,0, '(given)')
 o = Point(0, 0, '(arbitrary)')
@@ -389,3 +409,23 @@ c1 = Circle(Point(p6.x-1, 0, '(given)'), p6)
 
 print('points: %s' % (c.intersect(Line(p5, p4)) == [p1, p2]))
 print('points: %s' % (c.intersect(c1) == [p1, p2]))
+
+
+
+# A = (given)
+# D = (given)
+# E = (given)
+# H = A ...(given) E
+# I = A ...(given) D
+
+# J = D ... E
+# L = E -> A
+# C = I ^ L
+# G = H ^ L
+# K = G ... C
+
+# M = C -> A
+# B = K ^ M
+# F = K ^ M
+# N = E ->...<- F
+# O = D ->...<- B
