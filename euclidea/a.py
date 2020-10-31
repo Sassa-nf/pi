@@ -1,4 +1,4 @@
-from math import sin, cos, sqrt, pi, tan
+from math import sin, cos, sqrt, pi, tan, exp
 import traceback
 
 def sgn(a):
@@ -72,7 +72,7 @@ class Line:
 
       self.name = 'L_%s' % L_NAME
       L_NAME += 1
-      self.proof = ('...', p1, p2)
+      self.proof = ('%s ... %s', p1, p2)
 
    def __hash__(self):
       return self.p.__hash__() + self.v.__hash__()
@@ -109,7 +109,7 @@ class Line:
             return []
 
          t = -((shape.p.x - self.p.x) * self.v.y - (shape.p.y - self.p.y) * self.v.x) / (shape.v.x * self.v.y - shape.v.y * self.v.x)
-         return [Point(shape.p.x + shape.v.x * t, shape.p.y + shape.v.y * t, ('^', self, shape))]
+         return [Point(shape.p.x + shape.v.x * t, shape.p.y + shape.v.y * t, ('%s ^ %s', self, shape))]
 
       if type(shape) == Circle:
          #    |x1  y1|
@@ -122,9 +122,9 @@ class Line:
             
          dd = sqrt(discriminant)
          p1 = Point(shape.c.x + det * self.v.y + sgn(self.v.y) * self.v.x * dd,
-                    shape.c.y + (-det) * self.v.x + abs(self.v.y) * dd, ('^', self, shape))
+                    shape.c.y + (-det) * self.v.x + abs(self.v.y) * dd, ('%s ^ %s', self, shape))
          p2 = Point(shape.c.x + det * self.v.y - sgn(self.v.y) * self.v.x * dd,
-                    shape.c.y + (-det) * self.v.x - abs(self.v.y) * dd, ('^', self, shape))
+                    shape.c.y + (-det) * self.v.x - abs(self.v.y) * dd, ('%s ^ %s', self, shape))
          if p1 == p2:
             return [p1]
          return [p1, p2]
@@ -141,7 +141,7 @@ class Circle:
       self.r = sqrt(dx*dx + dy*dy)
       self.name = 'C_%s' % C_NAME
       C_NAME += 1
-      self.proof = ('->', c, r)
+      self.proof = ('%s -> %s', c, r)
 
    def __hash__(self):
       return self.c.__hash__() + self.r.__hash__()
@@ -178,7 +178,7 @@ class Circle:
          line = Line(Point(cx, cy, '(computed)'), Point(cx-dy, cy+dx, '(computed)'))
          i1 = line.intersect(self)
          for p in i1:
-            p.proof = ('^', self, shape)
+            p.proof = ('%s ^ %s', self, shape)
             dx = shape.c.x - p.x
             dy = shape.c.y - p.y
             if abs(dx*dx + dy*dy - rr) > EPSILON:
@@ -268,7 +268,7 @@ def solve_it(shapes, points, goal, steps):
             if len(g2) > steps:
                continue
             if g1:
-               ss.proof = ('->' + ss.proof[0] + '<-', ss.proof[1], ss.proof[2])
+               ss.proof = (ss.proof[0] + ' (goal)', ss.proof[1], ss.proof[2])
             yield from solve_it(union(shapes, {ss}), pp, g2, steps-1)
 
    if len(goal) == steps and not [s for s in goal if type(s) == Circle]:
@@ -288,7 +288,7 @@ def solve_it(shapes, points, goal, steps):
             if len(g2) > steps:
                continue
             if g1:
-               ss.proof = ('->' + ss.proof[0] + '<-', ss.proof[1], ss.proof[2])
+               ss.proof = (ss.proof[0] + ' (goal)', ss.proof[1], ss.proof[2])
             yield from solve_it(union(shapes, {ss}), pp, g2, steps-1)
    return
 
@@ -324,23 +324,23 @@ def print_solution(solution):
       proof = p.proof
       if type(proof) != str:
          o, p1, p2 = proof
-         proof = '%s %s %s' % (p1.name, o, p2.name)
+         proof = o % (p1.name, p2.name)
       print('%s = %s' % (p.name, proof))
 
    for s in shapes:
       proof = s.proof
       if type(proof) != str:
          o, p1, p2 = proof
-         proof = '%s %s %s' % (p1.name, o, p2.name)
+         proof = o % (p1.name, p2.name)
       print('%s = %s' % (s.name, proof))
 
 o = Point(0, 0, '(given)')
-o1 = Point(3.14, 0, '(given)')
-o2 = Point(1, 2.72, '(given)')
+o1 = Point(pi, 0, '(given)')
+o2 = Point(1, exp(1), '(given)')
 ll = Line(o, o1)
 lr = Line(o, o2)
-ll.proof = ('...(given)', o, o1)
-lr.proof = ('...(given)', o, o2)
+ll.proof = ('%s ... %s (given)', o, o1)
+lr.proof = ('%s ... %s (given)', o, o2)
 
 for pl in [Line(o2, o), Line(o, o2)]:
   for rl in [Line(o1, o2), Line(o2, o1)]:
@@ -348,7 +348,7 @@ for pl in [Line(o2, o), Line(o, o2)]:
         if pp != o2:
            print('uh-oh: %s ^ %s == %s != %s' % (pl, rl, pp, o2))
 
-o3 = Point(4.14, 2.72, '(goal)')
+o3 = Point(1+pi, exp(1), '(goal)')
 solution = False
 for shapes, points in solve_it({ll, lr}, {o, o1, o2}, {Line(o1, o3)}, 5):
    solution = solve(shapes, points, {Line(o2, o3)}, 1)
@@ -422,18 +422,20 @@ print('points: %s' % (c.intersect(c1) == [p1, p2]))
 # A = (given)
 # C = (given)
 # D = (given)
-# H = A ...(given) D
-# I = A ...(given) C
+# H = A ... D (given)
+# I = A ... C (given)
 
-# J = D ... C
-# L = C -> A
+# J = A -> D
+# G = H ^ J
 
-# F = I ^ L
-# N = F -> C
-# B = H ^ L
-# K = B -> C
-# E = K ^ N
-# M = E ->...<- C
+# B = I ^ J
+# K = D ... B
 
-# G = L ^ N
-# O = D ->...<- G
+# L = C -> B
+
+# E = K ^ L
+# M = E ... C (goal)
+
+# N = B -> G
+# F = J ^ N
+# O = D ... F (goal)
