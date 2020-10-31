@@ -350,7 +350,11 @@ for pl in [Line(o2, o), Line(o, o2)]:
 
 o3 = Point(4.14, 2.72, '(goal)')
 solution = False
-#solution = solve({ll, lr}, {o, o1, o2}, {Line(o1, o3), Line(o2, o3)}, 6)
+for shapes, points in solve_it({ll, lr}, {o, o1, o2}, {Line(o1, o3)}, 5):
+   solution = solve(shapes, points, {Line(o2, o3)}, 1)
+   if solution:
+      break
+
 if solution:
    print('Building a parallelogram:')
    print_solution(solution)
@@ -416,19 +420,20 @@ print('points: %s' % (c.intersect(c1) == [p1, p2]))
 
 
 # A = (given)
+# C = (given)
 # D = (given)
-# E = (given)
-# H = A ...(given) E
-# I = A ...(given) D
+# H = A ...(given) D
+# I = A ...(given) C
 
-# J = D ... E
-# L = E -> A
-# C = I ^ L
-# G = H ^ L
-# K = G ... C
+# J = D ... C
+# L = C -> A
 
-# M = C -> A
-# B = K ^ M
-# F = K ^ M
-# N = E ->...<- F
-# O = D ->...<- B
+# F = I ^ L
+# N = F -> C
+# B = H ^ L
+# K = B -> C
+# E = K ^ N
+# M = E ->...<- C
+
+# G = L ^ N
+# O = D ->...<- G
