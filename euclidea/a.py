@@ -237,14 +237,21 @@ def included(s, shapes):
    return False
 
 def solve(shapes, points, goal, steps):
+   for solution in solve_it(shapes, points, goal, steps):
+      return solution
+
+   return False
+
+def solve_it(shapes, points, goal, steps):
    if len(goal) > steps:
       g1, goal = intersection(goal, shapes)
 
    if not goal:
-      return shapes, points
+      yield shapes, points
+      return
 
    if steps == 0:
-      return False
+      return
 
    plist = list(points)
    for i in range(len(plist)):
@@ -262,12 +269,10 @@ def solve(shapes, points, goal, steps):
                continue
             if g1:
                ss.proof = ('->' + ss.proof[0] + '<-', ss.proof[1], ss.proof[2])
-            solution = solve(union(shapes, {ss}), pp, g2, steps-1)
-            if solution:
-               return solution
+            yield from solve_it(union(shapes, {ss}), pp, g2, steps-1)
 
    if len(goal) == steps and not [s for s in goal if type(s) == Circle]:
-      return False
+      return
 
    for p1 in points:
       for p2 in points:
@@ -284,10 +289,8 @@ def solve(shapes, points, goal, steps):
                continue
             if g1:
                ss.proof = ('->' + ss.proof[0] + '<-', ss.proof[1], ss.proof[2])
-            solution = solve(union(shapes, {ss}), pp, g2, steps-1)
-            if solution:
-               return solution
-   return False
+            yield from solve_it(union(shapes, {ss}), pp, g2, steps-1)
+   return
 
 def new_name(name):
    if name[0] == 'Z':
