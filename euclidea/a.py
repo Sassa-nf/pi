@@ -27,6 +27,9 @@ class Point:
 
       dx = self.x - p.x
       dy = self.y - p.y
+      if dx >= EPSILON or dy >= EPSILON:
+         return False
+
       l = sqrt(dx*dx + dy*dy)
 
       return l < EPSILON
@@ -81,12 +84,15 @@ class Line:
       if type(l) != Line:
          return False
 
+      return self.__eq__line(l.p, l.v)
+
+   def __eq__line(self, l_p, l_v):
       # line intersecting with the origin point must be non-empty
-      if not self.intersect(l.p):
+      if not self.intersect(l_p):
          return False
 
       # the unit vectors are colinear:
-      return abs(self.v.x * l.v.x + self.v.y * l.v.y) >= 1-EPSILON
+      return abs(self.v.x * l_v.x + self.v.y * l_v.y) >= 1-EPSILON
 
    def __str__(self):
       return '[%s...%s]' % (self.p, self.v)
@@ -96,17 +102,11 @@ class Line:
          return shape.intersect(self)
 
       if type(shape) == Line:
-         if self == shape:
-            return [self]
+         if self.__eq__line(self.p, shape.v): # parallel lines
+            return [self] if self == shape else []
 
          if self.p == shape.p:
             return [self.p]
-
-         l = Line(self.p, shape.p)
-         l.v = Point(shape.v.x, shape.v.y, '(computed)')
-
-         if self == l: # parallel lines
-            return []
 
          t = -((shape.p.x - self.p.x) * self.v.y - (shape.p.y - self.p.y) * self.v.x) / (shape.v.x * self.v.y - shape.v.y * self.v.x)
          return [Point(shape.p.x + shape.v.x * t, shape.p.y + shape.v.y * t, ('%s ^ %s', self, shape))]
@@ -166,9 +166,8 @@ class Circle:
          dx = shape.c.x - self.c.x
          dy = shape.c.y - self.c.y
          dd = dx*dx + dy*dy
-         l = sqrt(dd)
 
-         if l < EPSILON: # self == shape took care of approx comparison of radii and centres
+         if dd < EPSILON * EPSILON: # self == shape took care of approx comparison of radii and centres
             return []
 
          rr = shape.r*shape.r
