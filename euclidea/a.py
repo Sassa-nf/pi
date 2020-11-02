@@ -1,9 +1,6 @@
 from math import sin, cos, sqrt, pi, tan, exp
 import traceback
 
-def sgn(a):
-   return -1 if a < 0 else 1
-
 EPSILON = 0.0000001
 P_NAME = 0
 L_NAME = 0
@@ -43,24 +40,7 @@ class Point:
             return [shape]
          return []
 
-      if type(shape) == Line:
-         # the vector from the origin point is colinear
-         dx = self.x - shape.p.x
-         dy = self.y - shape.p.y
-         l = sqrt(dx*dx + dy*dy)
-         if l < EPSILON or abs(shape.v.x * dx / l + shape.v.y * dy / l) >= 1-EPSILON:
-            return [self]
-         return []
-
-      if type(shape) == Circle:
-         dx = self.x - shape.c.x
-         dy = self.y - shape.c.y
-         l = sqrt(dx*dx + dy*dy)
-         if abs(l - shape.r) < EPSILON:
-            return [self]
-         return []
-
-      return []
+      return shape.intersect(self)
 
 class Line:
    def __init__(self, p1, p2):
@@ -99,7 +79,13 @@ class Line:
 
    def intersect(self, shape):
       if type(shape) == Point:
-         return shape.intersect(self)
+         # the vector from the origin point is colinear
+         dx = self.p.x - shape.x
+         dy = self.p.y - shape.y
+         l = sqrt(dx*dx + dy*dy)
+         if l < EPSILON or abs(self.v.x * dx / l + self.v.y * dy / l) >= 1-EPSILON:
+            return [shape]
+         return []
 
       if type(shape) == Line:
          if self.__eq__line(self.p, shape.v): # parallel lines
@@ -111,25 +97,7 @@ class Line:
          t = -((shape.p.x - self.p.x) * self.v.y - (shape.p.y - self.p.y) * self.v.x) / (shape.v.x * self.v.y - shape.v.y * self.v.x)
          return [Point(shape.p.x + shape.v.x * t, shape.p.y + shape.v.y * t, ('%s ^ %s', self, shape))]
 
-      if type(shape) == Circle:
-         #    |x1  y1|
-         # D =|x2  y2| = x1*y2 - x2*y1 = x1*(y1+vy) - (x1+vx)*y1 = x1*vy - vx*y1
-         det = (self.p.x - shape.c.x) * self.v.y - self.v.x * (self.p.y - shape.c.y)
-         discriminant = shape.r * shape.r - det * det
-
-         if discriminant < 0:
-            return []
-            
-         dd = sqrt(discriminant)
-         p1 = Point(shape.c.x + det * self.v.y + sgn(self.v.y) * self.v.x * dd,
-                    shape.c.y + (-det) * self.v.x + abs(self.v.y) * dd, ('%s ^ %s', self, shape))
-         p2 = Point(shape.c.x + det * self.v.y - sgn(self.v.y) * self.v.x * dd,
-                    shape.c.y + (-det) * self.v.x - abs(self.v.y) * dd, ('%s ^ %s', self, shape))
-         if p1 == p2:
-            return [p1]
-         return [p1, p2]
-
-      return []
+      return shape.intersect(self)
 
 class Circle:
    def __init__(self, c, r):
@@ -155,9 +123,40 @@ class Circle:
    def __str__(self):
       return 'Circle(%s, %s)' % (self.c, self.r)
 
+   def __intersect_line(self, shape, p_x, p_y, v_x, v_y):
+      #    |x1  y1|
+      # D =|x2  y2| = x1*y2 - x2*y1 = x1*(y1+vy) - (x1+vx)*y1 = x1*vy - vx*y1
+      det = (p_x - self.c.x) * v_y - v_x * (p_y - self.c.y)
+      discriminant = self.r * self.r - det * det
+
+      if discriminant < 0:
+         return []
+
+      dd = sqrt(discriminant)
+      c_x_det_v_y = self.c.x + det * v_y
+      c_y_det_v_x = self.c.y - det * v_x
+      v_x_dd = v_x * dd
+      v_y_dd = abs(v_y) * dd
+
+      p1 = Point(c_x_det_v_y + (v_x_dd if v_y >= 0 else -v_x_dd),
+                 c_y_det_v_x + v_y_dd, ('%s ^ %s', self, shape))
+      p2 = Point(c_x_det_v_y - (v_x_dd if v_y >= 0 else -v_x_dd),
+                 c_y_det_v_x - v_y_dd, ('%s ^ %s', self, shape))
+      if p1 == p2:
+         return [p1]
+      return [p1, p2]
+
    def intersect(self, shape):
-      if type(shape) == Point or type(shape) == Line:
-         return shape.intersect(self)
+      if type(shape) == Point:
+         dx = shape.x - self.c.x
+         dy = shape.y - self.c.y
+         l = sqrt(dx*dx + dy*dy)
+         if abs(l - self.r) < EPSILON:
+            return [shape]
+         return []
+
+      if type(shape) == Line:
+         return self.__intersect_line(shape, shape.p.x, shape.p.y, shape.v.x, shape.v.y)
 
       if type(shape) == Circle:
          if self == shape:
@@ -167,24 +166,36 @@ class Circle:
          dy = shape.c.y - self.c.y
          dd = dx*dx + dy*dy
 
-         if dd < EPSILON * EPSILON: # self == shape took care of approx comparison of radii and centres
+         rr = shape.r*shape.r
+         rR = self.r*self.r
+         two_r = 2 * self.r * shape.r
+
+         if dd < rr + rR - two_r - EPSILON: # self == shape took care of approx comparison of radii and centres
+            # the centres are closer to each other than is needed for circles to overlap:
+            # |r - R| is the distance between the centres when the circles touch; otherwise one circle is
+            # fully inside the other
             return []
 
-         rr = shape.r*shape.r
-         k = (self.r*self.r - rr + dd) / (2 * dd)
+         if dd > rr + rR + two_r + EPSILON:
+            return []
+
+         l = sqrt(dd)
+         #dx = dx / l
+         #dy = dy / l
+
+         k = (rR - rr + dd) / (2 * dd)
          cx = self.c.x + k * dx
          cy = self.c.y + k * dy
-         line = Line(Point(cx, cy, '(computed)'), Point(cx-dy, cy+dx, '(computed)'))
-         i1 = line.intersect(self)
+
+         i1 = self.__intersect_line(shape, cx, cy, -dy / l, dx / l)
          for p in i1:
-            p.proof = ('%s ^ %s', self, shape)
             dx = shape.c.x - p.x
             dy = shape.c.y - p.y
             if abs(dx*dx + dy*dy - rr) > EPSILON:
                return []
          return i1
 
-      return []
+      return shape.intersect(self)
 
 def point(p, shapes, points):
    return {}, union(points, {p})
