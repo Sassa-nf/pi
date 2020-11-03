@@ -2,6 +2,9 @@ from math import sin, cos, sqrt, pi, tan, exp
 import traceback
 
 EPSILON = 0.0000001
+EPSILON_2 = EPSILON * EPSILON
+EPSILON_1 = 1-EPSILON
+EPSILON_1_2 = EPSILON_1 * EPSILON_1
 P_NAME = 0
 L_NAME = 0
 C_NAME = 0
@@ -72,7 +75,7 @@ class Line:
          return False
 
       # the unit vectors are colinear:
-      return abs(self.v.x * l_v.x + self.v.y * l_v.y) >= 1-EPSILON
+      return abs(self.v.x * l_v.x + self.v.y * l_v.y) >= EPSILON_1
 
    def __str__(self):
       return '[%s...%s]' % (self.p, self.v)
@@ -82,8 +85,12 @@ class Line:
          # the vector from the origin point is colinear
          dx = self.p.x - shape.x
          dy = self.p.y - shape.y
-         l = sqrt(dx*dx + dy*dy)
-         if l < EPSILON or abs(self.v.x * dx / l + self.v.y * dy / l) >= 1-EPSILON:
+         dd = dx*dx + dy*dy
+         if dd < EPSILON_2:
+            return [shape]
+
+         vv = self.v.x * dx + self.v.y * dy
+         if vv * vv >= dd * EPSILON_1_2:
             return [shape]
          return []
 
@@ -150,6 +157,9 @@ class Circle:
       if type(shape) == Point:
          dx = shape.x - self.c.x
          dy = shape.y - self.c.y
+         if abs(dx) > self.r + EPSILON or abs(dy) > self.r + EPSILON:
+            return []
+
          l = sqrt(dx*dx + dy*dy)
          if abs(l - self.r) < EPSILON:
             return [shape]
@@ -170,7 +180,7 @@ class Circle:
          rR = self.r*self.r
          two_r = 2 * self.r * shape.r
 
-         if dd < rr + rR - two_r - EPSILON: # self == shape took care of approx comparison of radii and centres
+         if dd < rr + rR - two_r + EPSILON: # self == shape took care of approx comparison of radii and centres
             # the centres are closer to each other than is needed for circles to overlap:
             # |r - R| is the distance between the centres when the circles touch; otherwise one circle is
             # fully inside the other
@@ -201,15 +211,21 @@ def point(p, shapes, points):
    return {}, union(points, {p})
 
 def line(p1, p2, shapes, points):
-   intersections = {p1, p2}
    l = Line(p1, p2)
+   if included(l, shapes):
+      return None, points
+
+   intersections = {p1, p2}
    for s in shapes:
       intersections = union(intersections, {p for p in s.intersect(l) if type(p) == Point})
    return l, union(intersections, points)
 
 def circle(c, r, shapes, points):
-   intersections = {c, r}
    circle = Circle(c, r)
+   if included(circle, shapes):
+      return None, points
+
+   intersections = {c, r}
    for s in shapes:
       intersections = union(intersections, {p for p in s.intersect(circle) if type(p) == Point})
    return circle, union(intersections, points)
@@ -268,18 +284,19 @@ def solve_it(shapes, points, goal, steps):
       p1 = plist[i]
       for j in range(i):
          p2 = plist[j]
-         l = Line(p1, p2)
-         if not included(l, shapes):
-            ss, pp = line(p1, p2, shapes, points)
-            if len(goal) < steps:
-               g1, g2 = None, goal
-            else:
-               g1, g2 = intersection(goal, {ss})
-            if len(g2) > steps:
-               continue
-            if g1:
-               ss.proof = (ss.proof[0] + ' (goal)', ss.proof[1], ss.proof[2])
-            yield from solve_it(union(shapes, {ss}), pp, g2, steps-1)
+         ss, pp = line(p1, p2, shapes, points)
+         if not ss:
+            continue
+
+         if len(goal) < steps:
+            g1, g2 = None, goal
+         else:
+            g1, g2 = intersection(goal, {ss})
+         if len(g2) > steps:
+            continue
+         if g1:
+            ss.proof = (ss.proof[0] + ' (goal)', ss.proof[1], ss.proof[2])
+         yield from solve_it(union(shapes, {ss}), pp, g2, steps-1)
 
    if len(goal) == steps and not [s for s in goal if type(s) == Circle]:
       return
@@ -288,18 +305,19 @@ def solve_it(shapes, points, goal, steps):
       for p2 in points:
          if p1 == p2:
             continue
-         c = Circle(p1, p2)
-         if not included(c, shapes):
-            ss, pp = circle(p1, p2, shapes, points)
-            if len(goal) < steps:
-               g1, g2 = None, goal
-            else:
-               g1, g2 = intersection(goal, {ss})
-            if len(g2) > steps:
-               continue
-            if g1:
-               ss.proof = (ss.proof[0] + ' (goal)', ss.proof[1], ss.proof[2])
-            yield from solve_it(union(shapes, {ss}), pp, g2, steps-1)
+         ss, pp = circle(p1, p2, shapes, points)
+         if not ss:
+            continue
+
+         if len(goal) < steps:
+            g1, g2 = None, goal
+         else:
+            g1, g2 = intersection(goal, {ss})
+         if len(g2) > steps:
+            continue
+         if g1:
+            ss.proof = (ss.proof[0] + ' (goal)', ss.proof[1], ss.proof[2])
+         yield from solve_it(union(shapes, {ss}), pp, g2, steps-1)
    return
 
 def new_name(name):
@@ -364,6 +382,7 @@ for shapes, points in solve_it({ll, lr}, {o, o1, o2}, {Line(o1, o3)}, 5):
    solution = solve(shapes, points, {Line(o2, o3)}, 1)
    if solution:
       break
+#solution = solve({ll, lr}, {o, o1, o2}, {Line(o1, o3), Line(o2, o3)}, 6)
 
 if solution:
    print('Building a parallelogram:')
