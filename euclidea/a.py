@@ -459,7 +459,7 @@ print('points: %s' % (c.intersect(Line(p5, p4)) == [p1, p2]))
 print('points: %s' % (c.intersect(c1) == [p1, p2]))
 
 
-
+# parallelogram in 8E: (2 are spent as H and I)
 # A = (given)
 # C = (given)
 # D = (given)
@@ -480,3 +480,25 @@ print('points: %s' % (c.intersect(c1) == [p1, p2]))
 # N = B -> G
 # F = J ^ N
 # O = D ... F (goal)
+
+
+# equilateral in 6E:
+# J = (given circle)
+# B = (given)
+# D = (arbitrary)
+
+# M = D -> B
+# E = J ^ M
+# K = B -> E
+
+# C = M ^ K
+# L = C -> B
+
+# A = K ^ L
+# F = K ^ L
+# I = A ... B (goal)
+# N = F ... B (goal)
+
+# G = J ^ I
+# H = J ^ N
+# O = G ... H (goal)
