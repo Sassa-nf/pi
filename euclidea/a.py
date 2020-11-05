@@ -160,8 +160,8 @@ class Circle:
          if abs(dx) > self.r + EPSILON or abs(dy) > self.r + EPSILON:
             return []
 
-         l = sqrt(dx*dx + dy*dy)
-         if abs(l - self.r) < EPSILON:
+         dd = dx*dx + dy*dy
+         if abs(dd - self.r * self.r) < EPSILON_2:
             return [shape]
          return []
 
@@ -408,11 +408,23 @@ c.proof = '(given circle)'
 p1 = Point(cos(2*pi/3), sin(2*pi/3), '(goal)')
 p2 = Point(cos(-2*pi/3), sin(-2*pi/3), '(goal)')
 
-p3 = Point(cos(3*pi/5), sin(4*pi/5), '(arbitrary)')
+p3 = Point(cos(4*pi/5), sin(4*pi/5), '(arbitrary)')
 
-solution = solve({c}, {r, p3}, {Line(p1, p2)}, 4)
+pp, = c.intersect(p3)
+print('%s ^ %s == %s, %s' % (p3, c, pp, pp == p3))
+print('%s, %s, %s' % (r, p1, p2))
+
+solution = False
+for shapes, points in solve_it({c}, {r, p3}, {Line(p1, r)}, 4):
+   for shapes, points in solve_it(shapes, points, {Line(r, p2)}, 1):
+      solution = solve(shapes, points, {Line(p2, p1)}, 1)
+      if solution:
+         break
+   if solution:
+      break
 
 if solution:
+   print('Building an equilateral triangle:')
    print_solution(solution)
 else:
    print('not found...')
