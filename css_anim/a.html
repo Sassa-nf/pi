@@ -1,0 +1,46 @@
+<html>
+<head>
+<style>
+@keyframes wobble {
+  0% {width: 0px; font-size: 0px;}
+  60% {width: 20px; border-radius: 20px; font-size: 17px;}
+  70% {width: 17px; border-radius: 17px; font-size: 15px;}
+  80% {width: 20px; border-radius: 20px; font-size: 17px;}
+  90% {width: 17px; border-radius: 17px; font-size: 15px}
+  100% {width: 20px; border-radius: 20px; font-size: 17px;}
+}
+
+div.wobble {
+  width: 20px;
+  font-size: 17px;
+  text-align: center;
+  border-radius: 20px;
+  border: 2px solid black;
+  animation: wobble 1s linear;
+}
+
+</style>
+<script>
+var c = 0;
+
+function blah() {
+   canvas = document.getElementById("canvas");
+   new_div = document.createElement("div");
+   new_div.setAttribute("class", "wobble");
+   new_div.innerHTML = "A";
+   canvas.appendChild(new_div);
+   c++;
+
+   if (c < 10) {
+      setTimeout(blah, 3000);
+   }
+}
+      setTimeout(blah, 3000);
+</script>
+</head>
+<body>
+<div id="canvas">
+<div class="wobble">A</div>
+</div>
+</body>
+</html>
