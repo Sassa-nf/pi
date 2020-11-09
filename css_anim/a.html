@@ -2,21 +2,45 @@
 <head>
 <style>
 @keyframes wobble {
-  0% {width: 0px; font-size: 0px;}
-  60% {width: 20px; border-radius: 20px; font-size: 17px;}
-  70% {width: 17px; border-radius: 17px; font-size: 15px;}
-  80% {width: 20px; border-radius: 20px; font-size: 17px;}
-  90% {width: 17px; border-radius: 17px; font-size: 15px}
-  100% {width: 20px; border-radius: 20px; font-size: 17px;}
+  0% {transform: scale(0);}
+  20% {transform: scale(1.1);}
+  40% {transform: scale(0.9);}
+  60% {transform: scale(1.1);}
+  80% {transform: scale(0.9);}
+  100% {transform: scale(1);}
 }
 
-div.wobble {
+div.row {
+  display: flex;
+  flex-flow: row;
+  position: relative;
+}
+
+div.level_0 {
   width: 20px;
+  height: 20px;
   font-size: 17px;
   text-align: center;
   border-radius: 20px;
+}
+
+div.level_1 {
+  width: 60px;
+  height: 60px;
+  text-align: center;
+  border-radius: 60px;
+}
+
+div.level_2 {
+  width: 180px;
+  height: 180px;
+  text-align: center;
+  border-radius: 180px;
+}
+
+div.wobble {
   border: 2px solid black;
-  animation: wobble 1s linear;
+  animation: wobble 0.6s linear;
 }
 
 </style>
@@ -24,23 +48,59 @@ div.wobble {
 var c = 0;
 
 function blah() {
-   canvas = document.getElementById("canvas");
+   level_0 = document.getElementById("level_0");
    new_div = document.createElement("div");
-   new_div.setAttribute("class", "wobble");
-   new_div.innerHTML = "A";
-   canvas.appendChild(new_div);
+   new_div.setAttribute("class", "wobble level_0");
+   new_div.setAttribute("id", "bubble_" + c);
+   new_div.innerHTML = String.fromCharCode(64 + c);
+   level_0.appendChild(new_div);
    c++;
 
-   if (c < 10) {
-      setTimeout(blah, 3000);
+   level = 1;
+   while(level_0.children.length === 6) {
+      new_div = document.createElement("div");
+      new_div.setAttribute("class", "wobble level_" + level);
+      nested_div = document.createElement("div");
+      nested_div.setAttribute("style", "position: relative; height: 100%;");
+      new_div.appendChild(nested_div);
+
+      nested2 = document.createElement("div");
+      nested2.setAttribute("style", "position: absolute; bottom: 60%; left: 33.333%;");
+      nested2.appendChild(level_0.children[1]);
+      nested_div.appendChild(nested2);
+
+      nested2 = document.createElement("div");
+      nested2.setAttribute("style", "position: absolute; top: 50%; right: 55%;");
+      nested2.appendChild(level_0.children[1]);
+      nested_div.appendChild(nested2);
+
+      nested2 = document.createElement("div");
+      nested2.setAttribute("style", "position: absolute; top: 50%; left: 55%;");
+      nested2.appendChild(level_0.children[1]);
+      nested_div.appendChild(nested2);
+
+      level_0 = document.getElementById("level_" + level);
+      if (!level_0) {
+         level_0 = document.createElement("div");
+         level_0.setAttribute("id", "level_" + level);
+         level_0.setAttribute("class", "row");
+         document.getElementById("canvas").appendChild(level_0);
+      }
+      level++;
+      level_0.appendChild(new_div);
+   }
+
+   if (c < 30) {
+      setTimeout(blah, 1000);
    }
 }
-      setTimeout(blah, 3000);
+      setTimeout(blah, 1000);
 </script>
 </head>
 <body>
 <div id="canvas">
-<div class="wobble">A</div>
+<div id="level_0" class="row">
+</div>
 </div>
 </body>
 </html>
