@@ -39,6 +39,29 @@ div.row {
   position: relative;
 }
 
+div.left_spacer {
+  width: 50%;
+}
+
+div.left {
+  position: absolute;
+  right: 0px;
+}
+
+div.right {
+  border-left: 3px green solid;
+}
+
+#null {
+  position: absolute;
+  right: -7px;
+  bottom: -10px;
+  width: 10px;
+  height: 10px;
+  background: red;
+  border-radius: 5px;
+}
+
 div.level_0 {
   width: 20px;
   height: 20px;
@@ -91,13 +114,42 @@ function move_nodes(level, new_div) {
       level_0.setAttribute("id", "level_" + level);
       level_0.setAttribute("class", "row");
       document.getElementById("canvas").appendChild(level_0);
+
+      level_0.appendChild(document.createElement("div"));
+      level_0 = level_0.children[0];
+      level_0.setAttribute("class", "left_spacer row");
+
+      level_0.appendChild(document.createElement("div"));
+      level_0 = level_0.children[0];
+      level_0.setAttribute("class", "left row");
+
+      halfWidth = 10;
+      for(i = 0; i < level; i++) {
+         halfWidth = halfWidth * 3;
+      }
+      halfWidth += 4;
+      level_0.setAttribute("style", "right: -" + halfWidth + "px");
+
+      document.getElementById("null").remove();
+   } else if (level_0.children.length === 1) {
+      level_0.appendChild(document.createElement("div"));
+      level_0.children[0].children[0].removeAttribute("style");
+
+      _null = document.createElement("div");
+      _null.setAttribute("id", "null");
+      level_0.children[0].appendChild(_null);
+
+      level_0 = level_0.children[1];
+      level_0.setAttribute("class", "right row");
+   } else {
+      level_0 = level_0.children[1];
    }
    level_0.appendChild(new_div);
 
-   if (level_0.children.length === 6) {
+   if (level_0.children.length === 5) {
       setTimeout(function() {
          curr_class = level_0.children[1].getAttribute("class");
-         for (i = 1; i < 4; i++) {
+         for (i = 0; i < 3; i++) {
             level_0.children[i].setAttribute("class", "wobble_out level_" + level);
          }
 
@@ -111,20 +163,20 @@ function move_nodes(level, new_div) {
 
             nested2 = document.createElement("div");
             nested2.setAttribute("style", "position: absolute; bottom: 60%; left: 33.333%;");
-            level_0.children[1].setAttribute("class", curr_class);
-            nested2.appendChild(level_0.children[1]);
+            level_0.children[0].setAttribute("class", curr_class);
+            nested2.appendChild(level_0.children[0]);
             nested_div.appendChild(nested2);
 
             nested2 = document.createElement("div");
             nested2.setAttribute("style", "position: absolute; top: 50%; right: 55%;");
-            level_0.children[1].setAttribute("class", curr_class);
-            nested2.appendChild(level_0.children[1]);
+            level_0.children[0].setAttribute("class", curr_class);
+            nested2.appendChild(level_0.children[0]);
             nested_div.appendChild(nested2);
 
             nested2 = document.createElement("div");
             nested2.setAttribute("style", "position: absolute; top: 50%; left: 55%;");
-            level_0.children[1].setAttribute("class", curr_class);
-            nested2.appendChild(level_0.children[1]);
+            level_0.children[0].setAttribute("class", curr_class);
+            nested2.appendChild(level_0.children[0]);
             nested_div.appendChild(nested2);
 
             move_nodes(level, new_div);
@@ -139,6 +191,7 @@ function move_nodes(level, new_div) {
 </head>
 <body>
 <div id="canvas">
+<div class="row"><div class="left_spacer row"><div id="null"></div></div><div class="right row">&nbsp;</div></div>
 </div>
 </body>
 </html>
