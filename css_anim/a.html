@@ -40,7 +40,13 @@ div.row {
 }
 
 div.left_spacer {
+  padding-bottom: 20px;
   width: 50%;
+}
+
+div.right_spacer {
+  padding-bottom: 20px;
+  border-left: 3px green solid;
 }
 
 div.left {
@@ -48,7 +54,7 @@ div.left {
   right: 0px;
 }
 
-div.right {
+div.right_o {
   border-left: 3px green solid;
 }
 
@@ -140,9 +146,13 @@ function move_nodes(level, new_div) {
       level_0.children[0].appendChild(_null);
 
       level_0 = level_0.children[1];
+      level_0.setAttribute("class", "right_spacer row");
+
+      level_0.appendChild(document.createElement("div"));
+      level_0 = level_0.children[0];
       level_0.setAttribute("class", "right row");
    } else {
-      level_0 = level_0.children[1];
+      level_0 = level_0.children[1].children[0];
    }
    level_0.appendChild(new_div);
 
@@ -191,7 +201,7 @@ function move_nodes(level, new_div) {
 </head>
 <body>
 <div id="canvas">
-<div class="row"><div class="left_spacer row"><div id="null"></div></div><div class="right row">&nbsp;</div></div>
+<div class="row"><div class="left_spacer row"><div id="null"></div></div><div class="right_spacer row">&nbsp;</div></div>
 </div>
 </body>
 </html>
