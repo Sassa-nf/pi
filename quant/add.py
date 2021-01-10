@@ -12,14 +12,9 @@
 from qiskit import (QuantumCircuit, Aer, execute)
 
 def add2(circuit):
-   circuit.toffoli(0,2,5)
-   circuit.cx(0,4)
-   circuit.cx(2,4)
-   circuit.toffoli(1,3,6)
-   circuit.toffoli(1,5,6)
-   circuit.toffoli(3,5,6)
-   circuit.cx(1,5)
-   circuit.cx(3,5)
+   circuit.toffoli([0, 1, 1, 3], [2, 3, 5, 5], [5, 6, 6, 6])
+   circuit.barrier()
+   circuit.cx(range(4),[4,5,4,5])
 
 circuit = QuantumCircuit(7, 3)
 circuit.x(0)
