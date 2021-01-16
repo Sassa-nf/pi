@@ -206,4 +206,59 @@ H * (ICX * TXT)^2 * TXT' * H
 |            + -|   |            0 -1|   |            + -|   |            + +|   |            + -|   |            1 0|
 
 
+Given a conditional Uy for Uy such that produces (-1)^y * |p>, determine y using a network with at most two Hadamard gates.
+
+```
+|0> -- H --*-- H -- |y>
+           |
+|0> ------ Uy ----- |0>
+
+Y=(-1)^y
+
+|1  0  1  0|   |1 0 0 0|   |1 0  1  0|         |1 0  Y  0|   |1 0  1  0|         |1+Y   0 1-Y   0|
+|0  1  0  1| * |0 1 0 0| * |0 1  0  1| * 1/2 = |0 1  0  Y| * |0 1  0  1| * 1/2 = |  0 1+Y   0 1-Y| * 1/2
+|1  0 -1  0|   |0 0 Y 0|   |1 0 -1  0|         |1 0 -Y  0|   |1 0 -1  0|         |1-Y   0 1+Y   0|
+|0  1  0 -1|   |0 0 0 Y|   |0 1  0 -1|         |0 1  0 -Y|   |0 1  0 -1|         |  0 1-Y   0 1+Y|
+
+So for y=0 we get:
+
+Y=1
+
+|1 0 0 0|
+|0 1 0 0|
+|0 0 1 0|
+|0 0 0 1|
+
+and for y=1 we get:
+
+Y=-1:
+
+|0 0 1 0|
+|0 0 0 1|
+|1 0 0 0|
+|0 1 0 0|
+
+Which is:
+
+(H x I) * CUy * (H x I) |0p> = (H x I) * CUy * (H|0> x |p>)
+                             = (H x I) * CUy * 1/sqrt(2) * (|0p> + |1p>)
+                             = (H x I) * 1/sqrt(2) * (|0p> + Y*|1p>)
+                             = 1/sqrt(2) * (H|0> + Y*H|1>) x |p>
+                             = 1/2 * (|0p> + |1p>) + Y/2 * (|0p> - |1p>)
+                             = (1+Y)/2 * |0p> + (1-Y)/2 * |1p>
+
+So we can fit whatever on input as p, and 0 as the first bit. Then measure the first bit. It will be equal to y.
+```
+
+I had a hunch we should try that configuration first. Can we try a different network?
+
+```
+|0> -- H --*---
+           |
+|0> -- H --Uy--
+
+|1  1  1  1|   |1 0 0 0|         |1  1  Y  Y|
+|1 -1  1 -1| * |0 1 0 0| * 1/2 = |1 -1  Y -Y| * 1/2
+|1  1 -1 -1|   |0 0 Y 0|         |1  1 -Y -Y|
+|1 -1 -1  1|   |0 0 0 Y|         |1 -1 -Y  Y|
 ```
