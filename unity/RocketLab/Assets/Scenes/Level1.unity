@@ -403,6 +403,24 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c68d63db9c66c4f6da7389e1d4a38d8e, type: 3}
+--- !u!1 &7440456877324100225 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1108174811860985271, guid: 96f1f651fc6424ce59e5592fb1fc9068,
+    type: 3}
+  m_PrefabInstance: {fileID: 7503233397444151094}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7440456877324100227
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7440456877324100225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: defc06fc805664ca0baa04fe0a78cca2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &7503233397444151094
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -414,6 +432,16 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: Rocket Ship
+      objectReference: {fileID: 0}
+    - target: {fileID: 5118184959515979957, guid: 96f1f651fc6424ce59e5592fb1fc9068,
+        type: 3}
+      propertyPath: m_audioClip
+      value: 
+      objectReference: {fileID: 8300000, guid: 3f4c9e5eed277402eb5215abd1851286, type: 3}
+    - target: {fileID: 5118184959515979957, guid: 96f1f651fc6424ce59e5592fb1fc9068,
+        type: 3}
+      propertyPath: m_PlayOnAwake
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8543980351641135408, guid: 96f1f651fc6424ce59e5592fb1fc9068,
         type: 3}
