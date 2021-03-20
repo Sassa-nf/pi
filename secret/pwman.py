@@ -19,7 +19,7 @@ def aes_encrypt(key, text):
    pad_char = chr(pad_len)
    pad = pad_len * pad_char
    iv = Random.new().read(AES.block_size)
-   enc_state = iv + AES.new(key, AES.MODE_CBC, iv).encrypt(text + pad)
+   enc_state = iv + AES.new(key, AES.MODE_CBC, iv).encrypt((text + pad).encode('utf-8'))
    return enc_state
 
 def aes_decrypt(key, text):
