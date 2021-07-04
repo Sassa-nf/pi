@@ -6,7 +6,7 @@ import hmac
 import json
 import sys
 import time
-# pip3 install pycrypto
+# pip3 install pycryptodome
 from Crypto import Random
 from Crypto.Cipher import AES
 
