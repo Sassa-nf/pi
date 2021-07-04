@@ -6,6 +6,9 @@ import struct
 import zlib
 
 SQRT2 = math.sqrt(2)
+SQRT5 = math.sqrt(5)
+SQRT10 = math.sqrt(10)
+SQRT13 = math.sqrt(13)
 
 CELLS = 100
 if len(sys.argv) > 2:
@@ -46,6 +49,30 @@ def shortest_path(sums, field):
             paths[r][c] = (x, y)
             nn.append((c, r))
 
+      v = d + SQRT5 * f
+      for c, r in [(c, r) for c, r in [(x-1, y-2), (x+1, y-2), (x-1, y+2), (x+1, y+2), (x-2, y-1), (x-2, y+1), (x+2, y-1), (x+2, y+1)]
+                          if (c != x or r != y) and c >= 0 and r >= 0 and c < w and r < h]:
+         if v > sums[r][c]:
+            sums[r][c] = v
+            paths[r][c] = (x, y)
+            nn.append((c, r))
+
+      v = d + SQRT10 * f
+      for c, r in [(c, r) for c, r in [(x-1, y-3), (x+1, y-3), (x-1, y+3), (x+1, y+3), (x-3, y-1), (x-3, y+1), (x+3, y-1), (x+3, y+1)]
+                          if (c != x or r != y) and c >= 0 and r >= 0 and c < w and r < h]:
+         if v > sums[r][c]:
+            sums[r][c] = v
+            paths[r][c] = (x, y)
+            nn.append((c, r))
+
+      v = d + SQRT13 * f
+      for c, r in [(c, r) for c, r in [(x-2, y-3), (x+2, y-3), (x-2, y+3), (x+2, y+3), (x-3, y-2), (x-3, y+2), (x+3, y-2), (x+3, y+2)]
+                          if (c != x or r != y) and c >= 0 and r >= 0 and c < w and r < h]:
+         if v > sums[r][c]:
+            sums[r][c] = v
+            paths[r][c] = (x, y)
+            nn.append((c, r))
+
       if not nodes:
          nn.sort()
          nodes = [k for k, g in groupby(nn)]
@@ -60,7 +87,7 @@ def shortest_path(sums, field):
    return path
 
 def rect(field):
-   max_exp = math.log(0.3)
+   max_exp = math.log(0.001)
    return '\n'.join(['''<rect x="%f" y="%f" width="%f" height="%f" stroke="rgb(%d, 0, 0)" stroke-width="%f"/>''' %
                      (x * DX, y * DX, DX, DX, int((256 * (field[y][x] / max_exp)) if field[y][x] > max_exp else 256), DX)
                      for x in range(0, CELLS+1) for y in range(0, CELLS+1)])
@@ -81,7 +108,7 @@ for y in range(CELLS + 1):
    field.append(row)
    for x in range(CELLS + 1):
       p = x * DX, y * DX
-      row.append(sum([non_detection(d, p) for d in detectors]) * DX)
+      row.append(sum([non_detection(d, p) for d in detectors]))
 
 sums = [[-math.inf] * len(row) for row in field]
 path = shortest_path(sums, field)
@@ -97,7 +124,7 @@ if len(sys.argv) < 3:
                ' '.join(['%f,%f' % (x * DX, y * DX) for x, y in path])))
 
 end_x, end_y = path[0]
-print(math.exp(sums[end_y][end_x])) # we've been asked to print probability of detection, but this is the probability of non-detection - because it is near-zero
+print(math.exp(sums[end_y][end_x] * DX)) # we've been asked to print probability of detection, but this is the probability of non-detection - because it is near-zero
 
 if len(sys.argv) < 3:
    print('-->')
@@ -108,7 +135,7 @@ def png(field, path):
    rw = 3 * w + 1
    img = bytearray([0] * rw * w)
 
-   max_exp = math.log(0.3)
+   max_exp = math.log(0.001)
    for y in range(len(field)):
       row = field[y]
       for x in range(len(row)):
