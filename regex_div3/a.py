@@ -61,7 +61,12 @@ def borrow1_00(s):
 #   print(bin(r[0]))
 
 
-# ok, so BNF for the above is:
+# ok, so BNF for the above is
+# div3_01 = div3_01 11 | div3 10 | borrow1 01 | borrow1_00 00
+# borrow1 = borrow1 00 | div3_01 10 | div3 1
+# borrow1_00 = borrow1_00 00 | div3 10 | div3_01 1
+
+# which is, after inlining:
 #
 # div3 = '' | div3 0 | div3 11 | div3_01 01
 # div3_01 = div3 10 (00)* 1* | div3_01 100 (00)* 1*
@@ -87,7 +92,23 @@ def div31_01(s):
       return div31(s[:-2])
    return False
 
-r = [i for i in range(1000000) if div31(bin(i)[2:]) != (i % 3 == 0)]
+#r = [i for i in range(1000000) if div31(bin(i)[2:]) != (i % 3 == 0)]
+#if not r:
+#   print('ok')
+#else:
+#   print(bin(r[0]))
+
+# after more inlining:
+#
+# div3 = '' | div3 0 | div3 11 | div3 10 (00)* 1* (100 (00)* 1*)* 01
+#
+# the regex then is: (0 | 11 | 10 (00)* 1* (100 (00)* 1*)* 01)+
+
+import re
+
+DIV_3 = re.compile(r'(0|11|10(00)*1*(100(00)*1*)*01)+')
+
+r = [i for i in range(10000000) if not DIV_3.match(bin(i)[2:]) != (i % 3 != 0)]
 if not r:
    print('ok')
 else:
