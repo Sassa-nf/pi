@@ -54,16 +54,41 @@ def borrow1_00(s):
    # assert: s.endswith('1') - and we borrow it, so it turns into 0, plus carry
    return div3_01(s[:-1])
 
-r = [i for i in range(1000000) if div3(bin(i)[2:]) != (i % 3 == 0)]
-if not r:
-   print('ok')
-else:
-   print(bin(r[0]))
+#r = [i for i in range(1000000) if div3(bin(i)[2:]) != (i % 3 == 0)]
+#if not r:
+#   print('ok')
+#else:
+#   print(bin(r[0]))
 
 
 # ok, so BNF for the above is:
 #
 # div3 = '' | div3 0 | div3 11 | div3_01 01
-# div3_01 = div3_01 11 | div3 10 | borrow1 01 | borrow1_00 00
-# borrow1 = borrow1 00 | div3_01 10 | div3 1
-# borrow1_00 = borrow1_00 00 | div3 10 | div3_01 1
+# div3_01 = div3 10 (00)* 1* | div3_01 100 (00)* 1*
+def div31(s):
+   if not s:
+      return True
+   if s[-1] == '0':
+      return div31(s[:-1])
+   if s.endswith('11'):
+      return div31(s[:-2])
+   if s.endswith('01'):
+      return div31_01(s[:-2])
+   return False
+
+def div31_01(s):
+   while s.endswith('1'):
+      s = s[:-1]
+   while s.endswith('00'):
+      s = s[:-2]
+      if s.endswith('1'):
+         return div31_01(s[:-1])
+   if s.endswith('10'):
+      return div31(s[:-2])
+   return False
+
+r = [i for i in range(1000000) if div31(bin(i)[2:]) != (i % 3 == 0)]
+if not r:
+   print('ok')
+else:
+   print(bin(r[0]))
