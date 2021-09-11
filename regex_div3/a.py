@@ -28,20 +28,33 @@ def div3_01(s):
          return div3(s[:-2])
       return div3_01(s[:-2])
    # assert: s[-2] == '0'
-   # borrow 1
-   return borrow1(s)
+   if s[-1] == '1':
+      # borrow 1
+      return borrow1(s[:-2])
+   return borrow1_10(s[:-2])
 
 def borrow1(s):
-   c = '1' + s[-1]
-   s = s[:-2]
-   while s.endswith('0'):
-      s = s[:-1]
-      c = '1' + c
-   # assert: s.endswith('1')
-   return div3(s[:-1] + '0' + c)
+   while s.endswith('00'):
+      s = s[:-2]
+
+   if s.endswith('0'):
+      # assert: s.endswith('10') - and we borrow it, so it turns into 01
+      return div3_01(s[:-2])
+   # assert: s.endswith('1') - and we borrow it, so it turns into 0
+   return div3(s[:-1])
+
+def borrow1_10(s):
+   while s.endswith('00'):
+      s = s[:-2]
+
+   if s.endswith('0'):
+      # assert: s.endswith('10') - and we borrow it, so it turns into 01, plus carry
+      return div3(s[:-2])
+   # assert: s.endswith('1') - and we borrow it, so it turns into 0, plus carry
+   return div3_01(s[:-1])
 
 
-r = [i for i in range(1000) if div3(bin(i)[2:]) != (i % 3 == 0)]
+r = [i for i in range(1000000) if div3(bin(i)[2:]) != (i % 3 == 0)]
 if not r:
    print('ok')
 else:
