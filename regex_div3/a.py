@@ -103,12 +103,52 @@ def div31_01(s):
 # div3 = '' | div3 0 | div3 11 | div3 10 (00)* 1* (100 (00)* 1*)* 01
 #
 # the regex then is: (0 | 11 | 10 (00)* 1* (100 (00)* 1*)* 01)+
+# which can be further simplified to:
+# (0 | 11 | 10 (00)* (1+ (00)+)* 1* 01)+
+#
+# which is:
+# (0 | 1 (00)* 1 | 10 (00)* 1 ((00)* 1)* 01)+
 
 import re
 
-DIV_3 = re.compile(r'(0|11|10(00)*1*(100(00)*1*)*01)+')
+#DIV_3 = re.compile(r'(0|11|10(00)*(1+(00)+)*1*01)+')
+#DIV_3 = re.compile(r'^(0|1(00)*1|10((00)*1)+01)+$')
+DIV_3 = re.compile(r'^(0|11|10(00)*(1+(00)+)*1*01)+$')
 
-r = [i for i in range(10000000) if not DIV_3.match(bin(i)[2:]) != (i % 3 != 0)]
+#r = [i for i in range(10000000) if (not DIV_3.match(bin(i)[2:])) != (i % 3 != 0)]
+#if not r:
+#   print('ok')
+#else:
+#   print(bin(r[0]))
+
+def rem3(s):
+   if not s:
+      return 0
+
+   if s[0] == '0':
+      return rem3(s[1:])
+
+   return rem3_1(s[1:])
+
+def rem3_1(s):
+   if not s:
+      return 1
+
+   if s[0] == '1':
+      return rem3(s[1:])
+
+   return rem3_10(s[1:])
+
+def rem3_10(s):
+   if not s:
+      return 2
+
+   if s[0] == '0':
+      return rem3_1(s[1:])
+
+   return rem3_10(s[1:])
+
+r = [i for i in range(10000000) if rem3(bin(i)[2:]) != i % 3]
 if not r:
    print('ok')
 else:
