@@ -204,6 +204,7 @@ H * (ICX * TXT)^2 * TXT' * H
 |        + -    |   |        0 1     |   |        + -    |   |        + -    |   |        + -    |   |        0 1    |
 |            + +|   |            1  0|   |            + +|   |            + -|   |            + +|   |            0 1|
 |            + -|   |            0 -1|   |            + -|   |            + +|   |            + -|   |            1 0|
+```
 
 
 Given a conditional Uy for Uy such that produces (-1)^y * |p>, determine y using a network with at most two Hadamard gates.
