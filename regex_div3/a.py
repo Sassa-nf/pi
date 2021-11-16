@@ -161,7 +161,20 @@ def rem3_10(s):
 
 REM3 = re.compile(r'^(0|1(01*0)*1)+$')
 
-r = [i for i in range(10000000) if (not REM3.match(bin(i)[2:])) != (i % 3 != 0)]
+#r = [i for i in range(10000000) if (not REM3.match(bin(i)[2:])) != (i % 3 != 0)]
+
+# rem_0 = 0 | 1 rem_1
+# rem_1 = 0 rem_2 | 1 rem_3
+# rem_2 = 1 rem_0 | 0 rem_4
+# rem_3 = 0 rem_1 | 1 rem_2 => rem_1 = 0 rem_2 | 1 0 rem_1 | 1 1 rem_2 = (1 0)* (0 | 1 1) rem_2
+# rem_4 = 0 rem_3 | 1 rem_4 => rem_4 = 1* 0 rem_3 => rem_2 = 1 rem_0 | 0 1* 0 rem_3 = 1 rem_0 | 0 1* 0 0 rem_1 | 0 1* 0 1 rem_2 = (0 1* 0 1)* (1 rem_0 | 0 1* 0 0 rem_1)
+#
+# rem_1 = (1 0)* (0 | 1 1) (0 1* 0 1)* (1 rem_0 | 0 1* 0 0 rem_1) = ((1 0)* (0 | 1 1) (0 1* 0 1)* 0 1* 0 0)* (1 0)* (0 | 1 1) (0 1* 0 1)* 1 rem_0
+#
+# rem_0 = (0 | 1 ((1 0)* (0 | 1 1) (0 1* 0 1)* 0 1* 0 0)* (1 0)* (0 | 1 1) (0 1* 0 1)* 1)+
+
+REM5 = re.compile(r'^(0|1((10)*(0|11)(01*01)*01*00)*(10)*(0|11)(01*01)*1)+$')
+r = [i for i in range(10000000) if (not REM5.match(bin(i)[2:])) != (i % 5 != 0)]
 
 if not r:
    print('ok')
