@@ -33,18 +33,22 @@ public class a {
       }
 
       long t0 = System.nanoTime();
-//      for(int i = 0; i < 1000; i++) {
+      for(int i = 0; i < 10; i++) {
          new Fact(2 * 1024 * 1024).invoke();
-//      }
+      }
 
       long t1 = System.nanoTime();
-//      for(int i = 0; i < 1000; i++) {
+      for(int i = 0; i < 10; i++) {
          new Fact2(2 * 1024 * 1024).invoke();
-//      }
+      }
       long t2 = System.nanoTime();
+      for(int i = 0; i < 10; i++) {
         fact3(2 * 1024 * 1024);
+      }
       long t3 = System.nanoTime();
+      for(int i = 0; i < 10; i++) {
         fact4(2 * 1024 * 1024);
+      }
       long t4 = System.nanoTime();
 
       System.out.printf("Fact straightforward: %.3f\nFact multiply equally sized nums: %.3f\nFact multiply only odd: %.3f\nFact multiply only odd-2: %.3f\n%s\n",
@@ -80,6 +84,8 @@ public class a {
       ForkJoinTask<BigInteger>[] forks = new ForkJoinTask[sz.length-1];
 
       for(int i = 1; i < sz.length; i++) {
+         int pow = b;
+
          b -= 1;
          int from = sz[i-1];
          int to = sz[i];
@@ -89,30 +95,23 @@ public class a {
          shifts += ds * b; // given where we are, these are all even - what power of 2 is skipped
 
          Fact4 f = new Fact4(from , to);
-         int pow = b + 1;
          forks[i-1] = from > to ? one: ForkJoinTask.adapt(() -> f.invoke().pow(pow));
       }
 
-      int len = forks.length;
-      while(len > 1) {
-         for(int i = 0, j = len - 1; i < j; i++, j--) {
-            ForkJoinTask<BigInteger> left = forks[i];
-            ForkJoinTask<BigInteger> right = forks[j];
+      return forks(forks, 0, forks.length, 1).invoke().shiftLeft(shifts);
+   }
 
-            forks[i] = ForkJoinTask.adapt(() -> {
-               left.fork();
-               return right.invoke().multiply(left.join());
-            });
-         }
-         if ((len & 1) == 1) {
-            forks[len >> 1].fork();
-            len = (len >> 1) + 1;
-         } else {
-            len >>= 1;
-         }
+   static ForkJoinTask<BigInteger> forks(ForkJoinTask<BigInteger>[] fs, int from, int to, int step) {
+      if (from + step >= to) {
+         return fs[from];
       }
 
-      return forks[0].invoke().shiftLeft(shifts);
+      ForkJoinTask<BigInteger> left = forks(fs, from, to, step << 1);
+      ForkJoinTask<BigInteger> right = forks(fs, from + step, to, step << 1);
+      return ForkJoinTask.adapt(() -> {
+         left.fork();
+         return right.invoke().multiply(left.join());
+      });
    }
 
    static class Fact extends RecursiveTask<BigInteger> {
