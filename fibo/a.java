@@ -24,6 +24,13 @@ public class a {
             return;
          }
       }
+      for(int i = 0; i < bis.length; i++) {
+         BigInteger bi = fact4(10000 + i);
+         if (!bi.equals(bis[i])) {
+            System.out.println("Oops..." + bi + " != " + bis[i]);
+            return;
+         }
+      }
 
       long t0 = System.nanoTime();
 //      for(int i = 0; i < 1000; i++) {
@@ -37,9 +44,11 @@ public class a {
       long t2 = System.nanoTime();
         fact3(2 * 1024 * 1024);
       long t3 = System.nanoTime();
+        fact4(2 * 1024 * 1024);
+      long t4 = System.nanoTime();
 
-      System.out.printf("Fact straightforward: %.3f\nFact multiply equally sized nums: %.3f\nFact multiply only odd: %.3f\n%s\n",
-                        (t1 - t0) / 1e9, (t2 - t1) / 1e9, (t3 - t2) / 1e9, new Fact(20000).invoke().equals(new Fact2(20000).invoke()));
+      System.out.printf("Fact straightforward: %.3f\nFact multiply equally sized nums: %.3f\nFact multiply only odd: %.3f\nFact multiply only odd-2: %.3f\n%s\n",
+                        (t1 - t0) / 1e9, (t2 - t1) / 1e9, (t3 - t2) / 1e9, (t4 - t3) / 1e9, new Fact(20000).invoke().equals(fact4(20000)));
    }
 
    public static BigInteger fact3(int n) {
@@ -50,6 +59,43 @@ public class a {
       Fact3 f = new Fact3(n);
       BigInteger r = f.invoke();
       return r.shiftLeft(f.shift);
+   }
+
+   public static BigInteger fact4(int n) {
+      BigInteger res = BigInteger.ONE;
+      if (n == 0) {
+         return res;
+      }
+
+      int[] sz = new int[32 - Integer.numberOfLeadingZeros(n)];
+      for(int i = sz.length; i-- > 0; n >>= 1) {
+         sz[i] = n;
+      }
+      BigInteger prev = res;
+      int ds = 1;
+
+      ForkJoinTask<BigInteger> one = new Fact4(1, 1).fork();
+      ForkJoinTask<BigInteger> curr = one;
+      int b = sz.length - 1;
+      int shifts = b;
+
+      for(int i = 1; i < sz.length; i++) {
+         b -= 1;
+         int from = sz[i-1];
+         int to = sz[i];
+         from = (from & 1) == 1? from + 2: from + 1; // from is an odd number greater than the end of the previous range
+         to = (to & 1) == 1? to + 1: to;
+         ds += (to + 1 - from) >> 1; // how many digits will be computed
+         shifts += ds * b; // given where we are, these are all even - what power of 2 is skipped
+
+         ForkJoinTask<BigInteger> nu = from > to ? one: new Fact4(from, to).fork();
+         prev = prev.multiply(curr.join());
+         res = res.multiply(prev);
+         curr = nu;
+      }
+
+      res = res.multiply(prev).multiply(curr.join());
+      return res.shiftLeft(shifts);
    }
 
    static class Fact extends RecursiveTask<BigInteger> {
@@ -142,6 +188,32 @@ public class a {
 
          shift = lf.shift + rf.shift;
          return right;
+      }
+   }
+
+   static class Fact4 extends RecursiveTask<BigInteger> {
+      int from;
+      int to;
+      int step;
+
+      public Fact4(int from, int to) {
+         this(from, to, 2);
+      }
+
+      private Fact4(int from, int to, int step) {
+         this.from = from;
+         this.to = to;
+         this.step = step;
+      }
+
+      @Override
+      protected BigInteger compute() {
+         if (from + step > to) {
+            return from < 2? BigInteger.ONE: BigInteger.valueOf(from);
+         }
+
+         ForkJoinTask<BigInteger> left = new Fact4(from, to, step << 1).fork();
+         return new Fact4(from + step, to, step << 1).invoke().multiply(left.join());
       }
    }
 }
