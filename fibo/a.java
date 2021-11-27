@@ -71,13 +71,13 @@ public class a {
       for(int i = sz.length; i-- > 0; n >>= 1) {
          sz[i] = n;
       }
-      BigInteger prev = res;
       int ds = 1;
 
       ForkJoinTask<BigInteger> one = new Fact4(1, 1).fork();
-      ForkJoinTask<BigInteger> curr = one;
       int b = sz.length - 1;
       int shifts = b;
+
+      ForkJoinTask<BigInteger>[] forks = new ForkJoinTask[sz.length-1];
 
       for(int i = 1; i < sz.length; i++) {
          b -= 1;
@@ -88,14 +88,31 @@ public class a {
          ds += (to + 1 - from) >> 1; // how many digits will be computed
          shifts += ds * b; // given where we are, these are all even - what power of 2 is skipped
 
-         ForkJoinTask<BigInteger> nu = from > to ? one: new Fact4(from, to).fork();
-         prev = prev.multiply(curr.join());
-         res = res.multiply(prev);
-         curr = nu;
+         Fact4 f = new Fact4(from , to);
+         int pow = b + 1;
+         forks[i-1] = from > to ? one: ForkJoinTask.adapt(() -> f.invoke().pow(pow));
       }
 
-      res = res.multiply(prev).multiply(curr.join());
-      return res.shiftLeft(shifts);
+      int len = forks.length;
+      while(len > 1) {
+         for(int i = 0, j = len - 1; i < j; i++, j--) {
+            ForkJoinTask<BigInteger> left = forks[i];
+            ForkJoinTask<BigInteger> right = forks[j];
+
+            forks[i] = ForkJoinTask.adapt(() -> {
+               left.fork();
+               return right.invoke().multiply(left.join());
+            });
+         }
+         if ((len & 1) == 1) {
+            forks[len >> 1].fork();
+            len = (len >> 1) + 1;
+         } else {
+            len >>= 1;
+         }
+      }
+
+      return forks[0].invoke().shiftLeft(shifts);
    }
 
    static class Fact extends RecursiveTask<BigInteger> {
