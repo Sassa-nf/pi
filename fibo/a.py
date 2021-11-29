@@ -1,19 +1,19 @@
-#def fact(n):
-#   def f(b, e, s):
-#      return b if b + s > e else (f(b, e, s << 1), f(b + s, e, s << 1))
-#   return f(0, n, 1)
+def fract(n):
+   def f(b, e, s):
+      return b if b + s > e else (f(b, e, s << 1), f(b + s, e, s << 1))
+   return f(0, n, 1)
 #
 #print(fact(10))
 #print()
 #print(fact(20))
 
-def fact(n):
+def fact(n, xs=None):
    if n == 0:
       return 1
 
    shifts = [0]
 
-   def f(b, e, s, sh, shifts):
+   def f(b, e, s, sh, shifts, xs):
       if b == 2:
          b = b >> 1
          e = e >> 1
@@ -24,11 +24,14 @@ def fact(n):
          shifts[0] += sh
          return b
 
-      x = f(b, e, s << 1, sh, shifts)
-      y = f(b + s, e, s << 1, sh, shifts)
-      return x * y
+      x = f(b, e, s << 1, sh, shifts, xs)
+      y = f(b + s, e, s << 1, sh, shifts, xs)
+      r = x * y
+      if xs is not None:
+         xs.append((x.bit_length(), y.bit_length(), r.bit_length()))
+      return r
 
-   return f(1, n, 1, 0, shifts) << shifts[0]
+   return f(1, n, 1, 0, shifts, xs) << shifts[0]
 
 
 def highestBit(n):
@@ -101,3 +104,39 @@ for i in range(11):
    print(fact3(i))
 #print(fact(63))
 #fact3(256*1024)
+
+
+print('-------------------')
+print('burn the candle on both ends:')
+ys = []
+xs = [x for x in range(1, 2001)]
+l = len(xs) - 1
+while l > 0:
+   i = 0
+   while i < l - i:
+      x = xs[i]
+      y = xs[l - i]
+      r = x * y
+      xs[i] = r
+      ys.append((x.bit_length(), y.bit_length(), r.bit_length()))
+      i += 1
+   if i == l - i:
+      l = i
+   else:
+      l = i - 1
+
+   xs = xs[0:l+1]
+   xs.sort(key=lambda x: x.bit_length())
+res_candle = xs[0]
+
+print('-------------------')
+print('even-odd:')
+xs = []
+res_interlace = fact(2000, xs)
+xs.sort(key=lambda x: (x[2], x[0], x[1]))
+ys.sort(key=lambda x: (x[2], x[0], x[1]))
+dx = (0, 0, 0)
+for x, y in zip(xs, ys):
+   print('%d * %d = %d' % (x[0] - y[0], x[1] - y[1], x[2] - y[2]))
+   dx = dx[0] + x[0] - y[0], dx[1] + x[1] - y[1], dx[2] + x[2] - y[2]
+print(res_candle == res_interlace, dx)
