@@ -86,13 +86,19 @@ class Experiment:
       self.threads = []
 
    def run(self, events, request):
-      events = [(e, request(self)) for e in events]
+      events = [[e, request(self)] for e in events]
+      events[0][0] = 0
+      for i in range(1, len(events)):
+         events[i][0] += events[i-1][0]
+
+      self.steady_end = events[-1][0]
+      self.steady_start = 0.1 * self.steady_end
 
       clock = self.clock
       run_queue = self.run_queue
 
       while events:
-         events.sort(key=lambda i: i[0])
+         #events.sort(key=lambda i: i[0])
          t0 = events[0][0]
          clock.tick(t0)
          while events and events[0][0] == t0:
@@ -102,23 +108,30 @@ class Experiment:
                while v == 0:
                   v = t.item.send(t)
                if v > 0:
-                  events.append((clock.now() + v, t))
+                  v += clock.now()
+                  i = bisect(events, (v,), key=lambda x: x[0])
+                  events.insert(i, (v, t))
             except:
                pass
          for k, t in {k: t for k, t in run_queue.items()}.items():
             run_queue.pop(t.name, None)
-            events.append((clock.now(), t))
+            events.insert(0, (clock.now(), t))
       for th in self.threads:
          th.idle += clock.now() - th.suspended_at
          th.suspended_at = clock.now()
 
    def report(self):
+      steady_start, steady_end = self.steady_start, self.steady_end
+      steady_requests = self.requests
       rt = 0
-      for r in self.requests:
+      for r in steady_requests:
          rt += r.rt
 
-      print('clock: %.3f' % (self.clock.now()))
-      print('RT: %.3f requests: %d' % (rt / len(self.requests), len(self.requests)))
+      rt = rt / len(steady_requests)
+      tps = len(steady_requests) / (steady_end - steady_start)
+
+      print('clock: %.3f steady state: [%.3f ... %.3f]' % (self.clock.now(), steady_start, steady_end))
+      print('Steady State: RT: %.3f requests: %d throughput: %.3f concurrency: %.3f' % (rt, len(steady_requests), tps, tps * rt))
       for th in self.threads:
          print(th)
       for q in [self.req_queue, self.conn_pool]:
@@ -138,6 +151,20 @@ def thread_man_max(max):
       experiment.threads.append(th)
       return th
    return tm
+
+def bisect(a, x, key=None):
+   if key is None:
+      key = lambda x: x
+
+   x = key(x)
+   lo, hi = 0, len(a)
+   while lo < hi:
+      i = (lo + hi) // 2
+      if key(a[i]) <= x:
+         lo = i + 1
+      else:
+         hi = i
+   return lo
 
 def request(experiment):
    req = Request()
@@ -191,9 +218,11 @@ def new_req(req, experiment):
 
    req_queue.take(thread)
    req.rt = clock.now() - req.t0
-   requests.append(req)
 
-events = [0 for i in range(30)] + [i for i in range(10, 20000, 10)]
+   if experiment.steady_start <= clock.now() <= experiment.steady_end:
+      requests.append(req)
+
+events = [0 for i in range(30)] + [10 for i in range(10, 200000, 10)]
 
 max_threads = 6
 print('Experiment: fixed thread pool of %d threads' % max_threads)
@@ -211,10 +240,8 @@ import random
 import math
 
 rnd = random.Random(42)
-rate = 100
-events = [0] + [-math.log(1 - rnd.random()) * 1000 / rate for _ in range(10, 20000, 10)]
-for i in range(1, len(events)):
-   events[i] += events[i-1]
+rate = 97 # theoretical throughput is 100, but you can see it results in long waits, because the bursts away from mean arrival rate are not dealt with quickly
+events = [0] + [-math.log(1 - rnd.random()) * 1000 / rate for _ in range(10, 200000, 10)]
 
 print('\n\n--------------------\nExperiment: randomized arrival at rate %.3f, fixed thread pool of %d threads' % (rate, max_threads))
 exp = Experiment(thread_man_max(max_threads))
