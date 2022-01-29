@@ -1,0 +1,6 @@
+
+
+1-exp(-(pi * D / L)^2) = exp(-M)
+exp(-M) / exp(-M * mr^2) > mr
+
+exp(M * (mr^2 - 1)) > mr

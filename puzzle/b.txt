@@ -1,0 +1,22 @@
+.....xx.  2 b
+.....ox.  1 a
+.....pz. 19 s
+.....xy.  5 e
+.....yo.  4 d
+xottyxon 18 r
+xtyxnoxq 21 u
+.....qp. 13 m
+
+   10 11
+2374 26
+    20
+BCGDJTZK
+
+x=1
+o=0
+y=4
+t=3
+n=6
+q=5
+p=8
+z=11
