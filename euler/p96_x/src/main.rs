@@ -1,157 +1,7 @@
 // practice Algorithm X
-use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io;
-
-fn print_transition(field_was: &Vec<u16>, field: &Vec<u16>, row: usize, col: usize) {
-    let m = HashMap::from([((row, col), true)]);
-    println!("============================================================================================");
-    for r in 0..9 {
-        if r == 3 || r == 6 {
-            println!("----------------------------------               -----------------------------------");
-        } else {
-            println!();
-        }
-
-        for rr in 0..3 {
-            let s1 = print_row(&field_was, &m, r, rr);
-            let s2 = print_row(&field, &m, r, rr);
-            println!("{}         {}", s1, s2);
-        }
-    }
-}
-
-fn print_cover_sets(cover_sets: &HashMap<u16, usize>) {
-    println!("::::::::::::::::::::::::::::::::");
-
-    let mut keys: Vec<_> = cover_sets.keys().collect();
-    keys.sort_by_key(|k| (k.count_ones(), *k));
-    let mut s = String::new();
-    for k in keys {
-        s.push_str(", ");
-        for i in 0..9 {
-            if (k & (1 << i)) != 0 {
-                s.push(' ');
-                s.push(char::from_digit(i + 1, 16).unwrap());
-            }
-        }
-        s.push_str(" -> ");
-        s.push_str(format!("{}", cover_sets[k]).as_str());
-    }
-
-    if s.len() > 0 {
-        s.remove(0);
-        s.remove(0);
-    }
-    println!("{}", s);
-}
-
-fn print_row(field: &Vec<u16>, changes: &HashMap<(usize, usize), bool>, row: usize, rr: u32) -> String {
-    let mut s = String::new();
-
-    for c in 0..9 {
-        if c == 3 || c == 6 {
-            s.push_str(" |");
-        }
-
-        let mut v = field[row * 9 + c] >> (3 * rr);
-
-        if !changes.get(&(row, c)).is_none() {
-            s.push('>');
-        } else {
-            s.push(' ');
-        }
-
-        for cc in 1..4 {
-          if (v & 1) == 0 {
-              s.push(' ');
-          } else {
-              s.push(char::from_digit(cc + 3 * rr, 10).unwrap());
-          }
-          v = v >> 1;
-        }
-    }
-
-    s
-}
-
-fn print_field(changes: &Vec<(usize, usize)>, field: &Vec<u16>) {
-    println!("=========================================");
-
-    let mut m: HashMap<(usize, usize), bool> = HashMap::new();
-    for &(r, c) in changes {
-        m.insert((r, c), true);
-    }
-
-    for r in 0..9 {
-        if r == 3 || r == 6 {
-            println!("-----------------------------------------");
-        } else {
-            println!();
-        }
-
-        for rr in 0..3 {
-            let s = print_row(field, &m, r, rr);
-            println!("{}", s);
-        }
-    }
-}
-
-fn validate(field: &Vec<u16>) -> Option<(usize, usize)> {
-    for row in 0..9 {
-        let mut s = 0;
-        for col in 0..9 {
-            let i = row * 9 + col;
-            let v = field[i];
-            if v.count_ones() != 1 {
-                return Some((row, 9));
-            }
-
-            s |= v;
-        }
-
-        if s != 0x1ff {
-            return Some((row, 9));
-        }
-    }
-
-    for col in 0..9 {
-        let mut s = 0;
-        for row in 0..9 {
-            let i = row * 9 + col;
-            let v = field[i];
-            s |= v;
-        }
-
-        if s != 0x1ff {
-            return Some((9, col));
-        }
-    }
-
-    for rr in 0..3 {
-        for cc in 0..3 {
-            let mut s = 0;
-
-            for r in 0..3 {
-                let r = rr * 3 + r;
-
-                for c in 0..3 {
-                    let c = cc * 3 + c;
-                    let i = r * 9 + c;
-                    let v = field[i];
-                    s |= v;
-                }
-            }
-
-            if s != 0x1ff {
-                return Some((rr * 3, cc * 3));
-            }
-        }
-    }
-
-    None
-}
 
 struct Cell {
     data:     isize, // column head: count of ones; other cells: what choice this row corresponds to
@@ -163,17 +13,26 @@ struct Cell {
 
 // creates a matrix of choices and constraints, with special layout to simplify lookup of choices:
 // the first 9x9x9 cells are heads of rows of choices.
-fn init_cells() -> Vec<Cell> {
+fn init_cells(cell_rows: usize, cell_cols: usize) -> Vec<Cell> {
+    // because we have to have cell_w * cell_h digits in any column, cell_w * cell_cols == cell_rows * cell_h == cell_w * cell_h
+    let cell_w = cell_rows;
+    let cell_h = cell_cols;
+
+    let rows = cell_rows * cell_h;
+    let cols = cell_cols * cell_w;
+    let digits = cell_h * cell_w;
+    let c_head = -(digits as isize) - 1;
+
     let mut choices = Vec::new();
 
     // insert constraints that each cell can have only one number
     // ...inserting cells first
-    for r in 0..9 {
-        for c in 0..9 {
-            for d in 0..9 {
-                let id: usize = d + 9 * (c + 9 * r);
-                let next_row = if d == 8 { id - 8 } else { id + 1 };
-                let prev_row = if d == 0 { id + 8 } else { id - 1 };
+    for r in 0..rows {
+        for c in 0..cols {
+            for d in 0..digits {
+                let id: usize = d + digits * (c + cols * r);
+                let next_row = if d == (digits - 1) { id + 1 - digits } else { id + 1 };
+                let prev_row = if d == 0 { id + digits - 1 } else { id - 1 };
 
                 choices.push(Cell{data: id as isize, prev_col: id, next_col: id, prev_row: prev_row, next_row: next_row});
             }
@@ -185,51 +44,50 @@ fn init_cells() -> Vec<Cell> {
     append_node(&mut choices, 0, col_head, col_head);
 
     // ...inserting constraints now
-    for r in 0..9 {
-        for c in 0..9 {
-            append_node(&mut choices, -10, col_head, 9 * (c + 9 * r));
+    for r in 0..rows {
+        for c in 0..cols {
+            append_node(&mut choices, c_head, col_head, digits * (c + cols * r));
         }
     }
 
     // insert constraints that each row can have only 1 digit each
-    for r in 0..9 {
-        for d in 0..9 {
+    for r in 0..rows {
+        for d in 0..digits {
             let constraint_head = choices.len();
-            append_node(&mut choices, -10, col_head, constraint_head);
+            append_node(&mut choices, c_head, col_head, constraint_head);
 
-            for c in 0..9 {
-                let id: usize = d + 9 * (c + 9 * r);
+            for c in 0..cols {
+                let id: usize = d + digits * (c + cols * r);
                 append_node(&mut choices, id as isize, id, constraint_head);
             }
         }
     }
 
     // insert constraints that each column can have only 1 digit each
-    for c in 0..9 {
-        for d in 0..9 {
+    for c in 0..cols {
+        for d in 0..digits {
             let constraint_head = choices.len();
-            append_node(&mut choices, -10, col_head, constraint_head);
+            append_node(&mut choices, c_head, col_head, constraint_head);
 
-            for r in 0..9 {
-                let id: usize = d + 9 * (c + 9 * r);
+            for r in 0..rows {
+                let id: usize = d + digits * (c + cols * r);
                 append_node(&mut choices, id as isize, id, constraint_head);
             }
         }
     }
 
     // insert constraints that each square can have only 1 digit each
-    for cell in 0..9 {
-        let core_r = cell / 3;
-        let core_c = cell % 3;
+    for core_r in (0..rows).step_by(cell_h) {
+        for core_c in (0..cols).step_by(cell_w) {
+            for d in 0..digits {
+                let constraint_head = choices.len();
+                append_node(&mut choices, c_head, col_head, constraint_head);
 
-        for d in 0..9 {
-            let constraint_head = choices.len();
-            append_node(&mut choices, -10, col_head, constraint_head);
-
-            for r in core_r..core_r + 3 {
-                for c in core_c..core_c + 3 {
-                    let id: usize = d + 9 * (c + 9 * r);
-                    append_node(&mut choices, id as isize, id, constraint_head);
+                for r in core_r..core_r + cell_h {
+                    for c in core_c..core_c + cell_w {
+                        let id: usize = d + digits * (c + cols * r);
+                        append_node(&mut choices, id as isize, id, constraint_head);
+                    }
                 }
             }
         }
@@ -251,38 +109,6 @@ fn append_node(cells: &mut Vec<Cell>, data: isize, row_head: usize, col_head: us
     cells[i].next_row = id;
     cells[id].prev_row = cells[col_head].prev_row;
     cells[col_head].prev_row = id;
-}
-
-fn del_col(puzzle: &mut Vec<Cell>, col_head: usize) {
-    let mut r = col_head;
-    loop {
-        let i = puzzle[r].prev_col;
-        puzzle[i].next_col = puzzle[r].next_col;
-        let i = puzzle[r].next_col;
-        puzzle[i].prev_col = puzzle[r].prev_col;
-
-        r = puzzle[r].next_row;
-
-        if r == col_head {
-            break;
-        }
-    }
-}
-
-fn restore_col(puzzle: &mut Vec<Cell>, col_head: usize) {
-    let mut r = col_head;
-    loop {
-        let i = puzzle[r].prev_col;
-        puzzle[i].next_col = r;
-        let i = puzzle[r].next_col;
-        puzzle[i].prev_col = r;
-
-        r = puzzle[r].next_row;
-
-        if r == col_head {
-            break;
-        }
-    }
 }
 
 // remove all columns - i.e. remove all constraints that this choice satisfies;
@@ -312,8 +138,10 @@ fn choose(puzzle: &mut Vec<Cell>, cell: usize) {
                     let mut i = i;
                     while puzzle[i].data >= 0 {
                         i = puzzle[i].prev_row;
+                        assert!(i != k, "oops, somehow wrapped around and hit the bottom of the list");
                     }
                     puzzle[i].data += 1;
+                    assert!(puzzle[i].data < 0, "oops, overflow occurred: {} at {}, {}, {}, {}, {}", puzzle[i].data, cell, c, r, k, i);
 
                     k = puzzle[k].next_col;
                 }
@@ -333,36 +161,45 @@ fn choose(puzzle: &mut Vec<Cell>, cell: usize) {
 fn restore(puzzle: &mut Vec<Cell>, cell: usize) {
     let mut c = cell;
     loop {
+        c = puzzle[c].prev_col;
+
         let mut r = puzzle[c].prev_row;
         while r != c {
             if puzzle[r].data < 0 {
                 let i = puzzle[r].prev_col;
+                assert!(puzzle[i].next_col == puzzle[r].next_col, "oops, restoring incorrect next_col pointer");
                 puzzle[i].next_col = r;
 
                 let i = puzzle[r].next_col;
+                assert!(puzzle[i].prev_col == puzzle[r].prev_col, "oops, restoring incorrect prev_col pointer");
                 puzzle[i].prev_col = r;
             } else {
                 let mut k = puzzle[r].prev_col;
                 while k != r {
                     let i = puzzle[k].next_row;
+                    assert!(puzzle[i].prev_row == puzzle[k].prev_row, "oops, restoring incorrect prev_row pointer");
                     puzzle[i].prev_row = k;
 
                     let i = puzzle[k].prev_row;
+                    assert!(puzzle[i].next_row == puzzle[k].next_row, "oops, restoring incorrect next_row pointer");
                     puzzle[i].next_row = k;
 
                     let mut i = i;
                     while puzzle[i].data >= 0 {
                         i = puzzle[i].prev_row;
+                        assert!(i != k, "oops, somehow wrapped around and hit the bottom of the list");
                     }
 
                     puzzle[i].data -= 1;
+                    assert!(puzzle[i].data >= -10, "oops, somehow went over more than 9 choices");
 
                     k = puzzle[k].prev_col;
                 }
             }
+
+            r = puzzle[r].prev_row;
         }
 
-        c = puzzle[c].prev_col;
         if c == cell {
             break;
         }
@@ -396,7 +233,7 @@ fn alg_x(puzzle: &mut Vec<Cell>, col_head: usize, choices: &mut Vec<usize>) -> O
         let i = puzzle[c].data as usize;
         choices.push(i);
 
-        choose(puzzle, i as usize);
+        choose(puzzle, i);
 
         let r = alg_x(puzzle, col_head, choices);
         if r.is_none() {
@@ -404,16 +241,41 @@ fn alg_x(puzzle: &mut Vec<Cell>, col_head: usize, choices: &mut Vec<usize>) -> O
         }
 
         restore(puzzle, choices.pop().unwrap());
-        c = puzzle[min_c].next_row;
+        c = puzzle[c].next_row;
     }
 
     return Some((1, 1));
 }
 
+fn validate(puzzle: &Vec<Cell>, col_head: usize) {
+    let mut c = puzzle[col_head].next_col;
+    let mut cols = 0;
+    while c != col_head {
+        assert!(puzzle[c].data == -10, "oops, col {} got {}", cols, puzzle[c].data);
+
+        let mut r = puzzle[c].next_row;
+        let mut rows = 0;
+        while r != c {
+            assert!(puzzle[r].data >= 0, "oops, col {}, row {} got {}", cols, rows, puzzle[r].data);
+            rows+=1;
+            r = puzzle[r].next_row;
+        }
+
+        assert!(rows == 9, "oops, col {} got {} rows, not 9", cols, rows);
+
+        cols+=1;
+
+        c = puzzle[c].next_col;
+    }
+    assert!(cols == 324, "oops, got {} cols, not 9", cols);
+}
+
 fn deduce_backtrack(field: &mut Vec<u32>) -> Option<(usize, usize)> {
-    let mut puzzle = init_cells();
+    let mut puzzle = init_cells(3, 3);
 
     let col_head = puzzle[puzzle[0].prev_row].prev_col;
+
+    validate(&puzzle, col_head);
 
     let mut choices = Vec::new();
     for (rc, &v) in field.iter().enumerate() {
@@ -425,11 +287,12 @@ fn deduce_backtrack(field: &mut Vec<u32>) -> Option<(usize, usize)> {
         let i = rc * 9 + (d as usize);
 
         choices.push(i);
+        //println!("got {} ({}, {}) = {}", rc, rc / 9, rc % 9, d);
         choose(&mut puzzle, i);
     }
 
     let r = alg_x(&mut puzzle, col_head, &mut choices);
-    if let Some(rc) = r {
+    if let Some(_) = r {
         return r;
     }
 
@@ -525,4 +388,98 @@ fn main() -> io::Result<()> {
     println!("{}", sum);
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct BitMx {
+        mx: Vec<Vec<u128>>,
+        cols: Vec<u128>
+    }
+
+    impl BitMx {
+        fn mx_append(&mut self, row: usize, col: usize) {
+            let (r, c) = (col / 128, col % 128);
+
+            while self.cols.len() <= r {
+                self.cols.push(0);
+            }
+            self.cols[r] |= 1 << c;
+
+            while self.mx.len() <= row {
+                self.mx.push(Vec::new());
+            }
+
+            while self.mx[row].len() <= r {
+                self.mx[row].push(0);
+            }
+
+            self.mx[row][r] |= 1 << c;
+        }
+
+        fn new(cell_rows: usize, cell_cols: usize) -> Self {
+            let mut bit_mx = Self{ mx: Vec::new(), cols: Vec::new() };
+            let mut col = 0;
+
+            let cell_w = cell_cols;
+            let cell_h = cell_rows;
+            let digits = cell_w * cell_h;
+
+            let rows = cell_h * cell_rows;
+            let cols = cell_cols * cell_w;
+
+            for r in 0..rows {
+                for c in 0..cols {
+                    for d in 0..digits {
+                        let i = d + digits * (c + cols * r);
+                        bit_mx.mx_append(i, col);
+                    }
+                    col += 1;
+                }
+            }
+
+            for r in 0..rows {
+                for d in 0..digits {
+                    for c in 0..cols {
+                        let i = d + digits * (c + cols * r);
+                        bit_mx.mx_append(i, col);
+                    }
+                    col += 1;
+                }
+            }
+
+            for c in 0..cols {
+                for d in 0..digits {
+                    for r in 0..rows {
+                        let i = d + digits * (c + cols * r);
+                        bit_mx.mx_append(i, col);
+                    }
+                    col += 1;
+                }
+            }
+
+            for core_r in (0..rows).step_by(cell_h) {
+                for core_c in (0..cols).step_by(cell_w) {
+                    for d in 0..digits {
+                        for r in core_r..core_r + cell_h {
+                            for c in core_c..core_c + cell_w {
+                                let i = d + digits * (c + cols * r);
+                                bit_mx.mx_append(i, col);
+                            }
+                        }
+                        col += 1;
+                    }
+                }
+            }
+
+            bit_mx
+        }
+    }
+
+    #[test]
+    fn init_works() {
+        init_cells(3, 3);
+    }
 }
